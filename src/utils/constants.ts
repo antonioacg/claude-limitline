@@ -1,9 +1,9 @@
 // Powerline symbols
 export const SYMBOLS = {
-  right: "\ue0b0",
-  left: "\ue0b2",
+  right: "",
+  left: "",
   branch: "\ue0a0",
-  separator: "\ue0b1",
+  separator: "  ",
   model: "\u2731",           // Heavy asterisk ✱
   block_cost: "\u25eb",      // White square with vertical bisecting line ◫
   weekly_cost: "\u25cb",     // Circle ○

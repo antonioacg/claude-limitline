@@ -24,7 +24,8 @@ export interface BudgetConfig {
   resetDay?: number;     // 0=Sunday, 1=Monday, ..., 6=Saturday
   resetHour?: number;    // 0-23
   resetMinute?: number;  // 0-59
-  warningThreshold?: number; // percentage to show warning color
+  warningThreshold?: number; // percentage to show warning color (default 70)
+  criticalThreshold?: number; // percentage to show critical color (default 90)
 }
 
 export interface DisplayConfig {
@@ -84,7 +85,8 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
   },
   budget: {
     pollInterval: 15,
-    warningThreshold: 80,
+    warningThreshold: 70,
+    criticalThreshold: 90,
   },
   theme: "dark",
   segmentOrder: ["directory", "git", "model", "block", "weekly"],

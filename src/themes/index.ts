@@ -41,8 +41,8 @@ function hexToAnsi256(hex: string): number {
 
 // ANSI escape code generators
 export const ansi = {
-  fg: (hex: string) => `\x1b[38;5;${hexToAnsi256(hex)}m`,
-  bg: (hex: string) => `\x1b[48;5;${hexToAnsi256(hex)}m`,
+  fg: (hex: string) => hex === "transparent" ? "" : `\x1b[38;5;${hexToAnsi256(hex)}m`,
+  bg: (hex: string) => hex === "transparent" ? "" : `\x1b[48;5;${hexToAnsi256(hex)}m`,
   fgRaw: (n: number) => `\x1b[38;5;${n}m`,
   bgRaw: (n: number) => `\x1b[48;5;${n}m`,
   reset: '\x1b[0m',
@@ -137,6 +137,20 @@ export const rosePineTheme: ColorTheme = {
   critical: { bg: "#eb6f92", fg: "#191724" },
 };
 
+// Tokyo Night Day theme (light variant with transparent backgrounds)
+export const tokyoNightDayTheme: ColorTheme = {
+  directory: { bg: "transparent", fg: "#9854f1" },
+  git: { bg: "transparent", fg: "#587539" },
+  model: { bg: "transparent", fg: "#6366f1" },
+  block: { bg: "transparent", fg: "#0891b2" },
+  weekly: { bg: "transparent", fg: "#059669" },
+  opus: { bg: "transparent", fg: "#7c3aed" },
+  sonnet: { bg: "transparent", fg: "#0891b2" },
+  context: { bg: "transparent", fg: "#6366f1" },
+  warning: { bg: "transparent", fg: "#d97706" },
+  critical: { bg: "transparent", fg: "#dc2626" },
+};
+
 // All themes
 export const themes: Record<string, ColorTheme> = {
   dark: darkTheme,
@@ -144,6 +158,7 @@ export const themes: Record<string, ColorTheme> = {
   nord: nordTheme,
   gruvbox: gruvboxTheme,
   "tokyo-night": tokyoNightTheme,
+  "tokyo-night-day": tokyoNightDayTheme,
   "rose-pine": rosePineTheme,
 };
 

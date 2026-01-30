@@ -91,13 +91,13 @@ export class Renderer {
   private formatTimeRemaining(minutes: number, compact: boolean): string {
     if (minutes >= 60) {
       const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
+      const mins = String(minutes % 60).padStart(2, '0');
       if (compact) {
-        return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+        return `${hours}h${mins}m`;
       }
-      return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+      return `${hours}h${mins}m`;
     }
-    return `${minutes}m`;
+    return `${String(minutes).padStart(2, '0')}m`;
   }
 
   private getTrendSymbol(trend: "up" | "down" | "same" | null): string {
@@ -108,11 +108,12 @@ export class Renderer {
   }
 
   private getColorsForPercent(percent: number, baseColors: SegmentColor): SegmentColor {
-    const threshold = this.config.budget?.warningThreshold ?? 80;
+    const warningThreshold = this.config.budget?.warningThreshold ?? 70;
+    const criticalThreshold = this.config.budget?.criticalThreshold ?? 90;
 
-    if (percent >= 100) {
+    if (percent >= criticalThreshold) {
       return this.theme.critical;
-    } else if (percent >= threshold) {
+    } else if (percent >= warningThreshold) {
       return this.theme.warning;
     }
     return baseColors;
@@ -130,14 +131,16 @@ export class Renderer {
       // Segment content with background and foreground
       output += ansi.bg(seg.colors.bg) + ansi.fg(seg.colors.fg) + seg.text;
 
-      // Powerline arrow
+      // Powerline arrow or separator
       output += RESET_CODE;
-      if (nextColors) {
-        // Arrow: current bg as fg, next bg as bg
-        output += ansi.fg(seg.colors.bg) + ansi.bg(nextColors.bg) + this.symbols.rightArrow;
-      } else {
-        // Final arrow to terminal background
-        output += ansi.fg(seg.colors.bg) + this.symbols.rightArrow;
+      if (this.symbols.rightArrow) {
+        if (nextColors) {
+          output += ansi.fg(seg.colors.bg) + ansi.bg(nextColors.bg) + this.symbols.rightArrow;
+        } else {
+          output += ansi.fg(seg.colors.bg) + this.symbols.rightArrow;
+        }
+      } else if (i < segments.length - 1) {
+        output += this.symbols.separator;
       }
     }
 
@@ -153,10 +156,12 @@ export class Renderer {
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i];
 
-      // Left arrow first (pointing left like vim statuslines)
-      // Arrow color: segment bg as fg, previous segment bg (or terminal) as bg
       output += RESET_CODE;
-      output += ansi.fg(seg.colors.bg) + this.symbols.leftArrow;
+      if (this.symbols.leftArrow) {
+        output += ansi.fg(seg.colors.bg) + this.symbols.leftArrow;
+      } else {
+        output += this.symbols.separator;
+      }
 
       // Segment content with background and foreground
       output += ansi.bg(seg.colors.bg) + ansi.fg(seg.colors.fg) + seg.text;
@@ -182,7 +187,7 @@ export class Renderer {
       : ctx.envInfo.directory;
 
     return {
-      text: ` ${name} `,
+      text: `${name}`,
       colors: this.theme.directory,
     };
   }
@@ -192,7 +197,7 @@ export class Renderer {
       return null;
     }
 
-    const dirtyIndicator = ctx.envInfo.gitDirty ? " ●" : "";
+    const dirtyIndicator = "";
     const icon = this.usePowerline ? this.symbols.branch : "";
     const prefix = icon ? `${icon} ` : "";
 
@@ -202,7 +207,7 @@ export class Renderer {
     }
 
     return {
-      text: ` ${prefix}${branch}${dirtyIndicator} `,
+      text: `${prefix}${branch}${dirtyIndicator}`,
       colors: this.theme.git,
     };
   }
@@ -216,7 +221,7 @@ export class Renderer {
     const prefix = icon ? `${icon} ` : "";
 
     return {
-      text: ` ${prefix}${ctx.envInfo.model} `,
+      text: `${prefix}${ctx.envInfo.model}`,
       colors: this.theme.model,
     };
   }
@@ -230,7 +235,7 @@ export class Renderer {
 
     if (ctx.blockInfo.percentUsed === null) {
       return {
-        text: ` ${icon} -- `,
+        text: `${icon} --`,
         colors: this.theme.block,
       };
     }
@@ -256,11 +261,11 @@ export class Renderer {
     // Add time remaining if available and enabled (skip in compact mode)
     if (showTime && ctx.blockInfo.timeRemaining !== null && !ctx.compact) {
       const timeStr = this.formatTimeRemaining(ctx.blockInfo.timeRemaining, ctx.compact);
-      text += ` (${timeStr})`;
+      text += ` [${timeStr}]`;
     }
 
     return {
-      text: ` ${icon} ${text} `,
+      text: `${icon} ${text}`,
       colors,
     };
   }
@@ -271,7 +276,7 @@ export class Renderer {
 
     if (info.percentUsed === null) {
       return {
-        text: ` ${icon} -- `,
+        text: `${icon} --`,
         colors: this.theme.weekly,
       };
     }
@@ -295,11 +300,11 @@ export class Renderer {
 
     // Add week progress if enabled (skip in compact mode)
     if (showWeekProgress && !ctx.compact) {
-      text += ` (wk ${info.weekProgressPercent}%)`;
+      text += ` [wk ${info.weekProgressPercent}%]`;
     }
 
     return {
-      text: ` ${icon} ${text} `,
+      text: `${icon} ${text}`,
       colors: this.theme.weekly,
     };
   }
@@ -319,10 +324,10 @@ export class Renderer {
       const sonnetTrend = this.getTrendSymbol(ctx.trendInfo?.sevenDaySonnetTrend ?? null);
       const overallTrend = this.getTrendSymbol(ctx.trendInfo?.sevenDayTrend ?? null);
 
-      let text = `${sonnetIcon}${Math.round(info.sonnetPercentUsed)}%${sonnetTrend} | ${overallIcon}${Math.round(info.percentUsed)}%${overallTrend}`;
+      let text = `${sonnetIcon} ${Math.round(info.sonnetPercentUsed)}%${sonnetTrend} | ${overallIcon} ${Math.round(info.percentUsed)}%${overallTrend}`;
 
       if (showWeekProgress && !ctx.compact) {
-        text += ` (wk ${info.weekProgressPercent}%)`;
+        text += ` [wk ${info.weekProgressPercent}%]`;
       }
 
       // Use warning/critical colors based on highest percentage
@@ -330,7 +335,7 @@ export class Renderer {
       const colors = this.getColorsForPercent(maxPercent, this.theme.weekly);
 
       return {
-        text: ` ${text} `,
+        text: `${text}`,
         colors,
       };
     }
@@ -338,22 +343,22 @@ export class Renderer {
     // For Opus, Haiku, or when no model-specific data: just show overall
     if (info.percentUsed === null) {
       return {
-        text: ` ${overallIcon} -- `,
+        text: `${overallIcon} --`,
         colors: this.theme.weekly,
       };
     }
 
     const trend = this.getTrendSymbol(ctx.trendInfo?.sevenDayTrend ?? null);
-    let text = `${overallIcon}${Math.round(info.percentUsed)}%${trend}`;
+    let text = `${overallIcon} ${Math.round(info.percentUsed)}%${trend}`;
 
     if (showWeekProgress && !ctx.compact) {
-      text += ` (wk ${info.weekProgressPercent}%)`;
+      text += ` [wk ${info.weekProgressPercent}%]`;
     }
 
     const colors = this.getColorsForPercent(info.percentUsed, this.theme.weekly);
 
     return {
-      text: ` ${text} `,
+      text: `${text}`,
       colors,
     };
   }
@@ -384,7 +389,7 @@ export class Renderer {
     const colors = this.getColorsForPercent(percent, this.theme.context);
 
     return {
-      text: ` ${icon} ${percent}% `,
+      text: `${icon} ${percent}%`,
       colors,
     };
   }
@@ -425,11 +430,17 @@ export class Renderer {
 
     // Build left segments (existing behavior)
     const leftSegments: Segment[] = [];
+    let gitSegment: Segment | null = null;
     const order = this.config.segmentOrder ?? ["directory", "git", "model", "block", "weekly"];
 
     for (const name of order) {
       // Skip context - it goes on the right side
       if (name === "context") continue;
+      // Git goes on a separate line
+      if (name === "git") {
+        gitSegment = this.getSegment(name, ctx);
+        continue;
+      }
       const segment = this.getSegment(name, ctx);
       if (segment) {
         leftSegments.push(segment);
@@ -458,6 +469,11 @@ export class Renderer {
       if (allSegments.length > 0) {
         output = this.renderFallback(allSegments);
       }
+    }
+
+    // Git on separate line
+    if (gitSegment) {
+      output += "\n" + ansi.fg(gitSegment.colors.fg) + gitSegment.text + RESET_CODE;
     }
 
     return output;
