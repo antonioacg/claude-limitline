@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 import { loadConfig } from "./config/index.js";
-import { BlockProvider } from "./segments/block.js";
-import { WeeklyProvider } from "./segments/weekly.js";
+import { BlockProvider, WeeklyProvider, BillingProvider } from "./segments/index.js";
 import { Renderer } from "./renderer.js";
 import { getEnvironmentInfo } from "./utils/environment.js";
 import { readHookData } from "./utils/claude-hook.js";
@@ -26,11 +25,12 @@ async function main(): Promise<void> {
     // Initialize providers
     const blockProvider = new BlockProvider();
     const weeklyProvider = new WeeklyProvider();
+    const billingProvider = new BillingProvider();
 
     // Get data
     const pollInterval = config.budget?.pollInterval ?? 15;
 
-    const [blockInfo, weeklyInfo] = await Promise.all([
+    const [blockInfo, weeklyInfo, billingInfo] = await Promise.all([
       config.block?.enabled ? blockProvider.getBlockInfo(pollInterval) : null,
       config.weekly?.enabled
         ? weeklyProvider.getWeeklyInfo(
@@ -40,10 +40,12 @@ async function main(): Promise<void> {
             pollInterval
           )
         : null,
+      config.billing?.enabled ? billingProvider.getBillingInfo(pollInterval) : null,
     ]);
 
     debug("Block info:", JSON.stringify(blockInfo));
     debug("Weekly info:", JSON.stringify(weeklyInfo));
+    debug("Billing info:", JSON.stringify(billingInfo));
 
     // Get trend info for usage changes
     const trendInfo = config.showTrend ? getUsageTrend() : null;
@@ -51,7 +53,7 @@ async function main(): Promise<void> {
 
     // Render output
     const renderer = new Renderer(config);
-    const output = renderer.render(blockInfo, weeklyInfo, envInfo, trendInfo);
+    const output = renderer.render(blockInfo, weeklyInfo, billingInfo, envInfo, trendInfo);
 
     if (output) {
       process.stdout.write(output);

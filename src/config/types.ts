@@ -8,6 +8,10 @@ export interface SimpleSegmentConfig {
   enabled: boolean;
 }
 
+export interface GitSegmentConfig extends SimpleSegmentConfig {
+  showDirtyIndicator?: boolean;  // Show ● when there are uncommitted changes
+}
+
 export interface BlockSegmentConfig extends SegmentConfig {
   showTimeRemaining?: boolean;
 }
@@ -35,16 +39,24 @@ export interface DisplayConfig {
   compactWidth?: number;  // Terminal width threshold for compact mode (default 80)
 }
 
-export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context";
+export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing";
+
+export interface BillingSegmentConfig extends SimpleSegmentConfig {
+  // Billing only shows spent amount from OAuth usage API
+  // Balance and auto-reload are not available without browser session cookie
+  spendingWarning?: number;   // Amount in minor units (cents) to show warning color
+  spendingCritical?: number;  // Amount in minor units (cents) to show critical color
+}
 
 export interface LimitlineConfig {
   display?: DisplayConfig;
   directory?: SimpleSegmentConfig;  // Show repo/directory name
-  git?: SimpleSegmentConfig;        // Show git branch
+  git?: GitSegmentConfig;           // Show git branch
   model?: SimpleSegmentConfig;      // Show Claude model
   block?: BlockSegmentConfig;
   weekly?: WeeklySegmentConfig;
   context?: SimpleSegmentConfig;    // Show context window usage (right side)
+  billing?: BillingSegmentConfig;   // Show billing info (spent, balance, auto-reload)
   budget?: BudgetConfig;
   theme?: string;
   segmentOrder?: SegmentName[];     // Custom order for segments
@@ -63,6 +75,7 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
   },
   git: {
     enabled: true,
+    showDirtyIndicator: true,
   },
   model: {
     enabled: true,
@@ -82,6 +95,9 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
   },
   context: {
     enabled: true,
+  },
+  billing: {
+    enabled: false,
   },
   budget: {
     pollInterval: 15,

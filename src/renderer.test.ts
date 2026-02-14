@@ -3,6 +3,7 @@ import { Renderer } from "./renderer.js";
 import { DEFAULT_CONFIG, type LimitlineConfig } from "./config/index.js";
 import { type BlockInfo } from "./segments/block.js";
 import { type WeeklyInfo } from "./segments/weekly.js";
+import { type BillingSegmentInfo } from "./segments/billing.js";
 import { type EnvironmentInfo } from "./utils/environment.js";
 import { RESET_CODE } from "./utils/constants.js";
 
@@ -38,10 +39,20 @@ describe("Renderer", () => {
     sonnetResetAt: null,
   };
 
+  const defaultBillingInfo: BillingSegmentInfo = {
+    spentAmount: 33848,
+    spentCurrency: "BRL",
+    balanceAmount: 4974,
+    balanceCurrency: "BRL",
+    autoReloadEnabled: true,
+    isRealtime: true,
+    outOfCredits: false,
+  };
+
   describe("render", () => {
     it("renders all segments with default config", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toBeTruthy();
       expect(output).toContain("my-project");
@@ -57,7 +68,7 @@ describe("Renderer", () => {
         segmentOrder: ["model", "block"],
       };
       const renderer = new Renderer(config);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       // Should contain model and block
       expect(output).toContain("Opus 4.5");
@@ -74,7 +85,7 @@ describe("Renderer", () => {
         git: { enabled: false },
       };
       const renderer = new Renderer(config);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).not.toContain("my-project");
       expect(output).not.toContain("main");
@@ -92,7 +103,7 @@ describe("Renderer", () => {
         context: { enabled: false },
       };
       const renderer = new Renderer(config);
-      const output = renderer.render(null, null, defaultEnvInfo);
+      const output = renderer.render(null, null, null, defaultEnvInfo);
 
       expect(output).toBe("");
     });
@@ -103,14 +114,14 @@ describe("Renderer", () => {
         ...defaultEnvInfo,
         gitDirty: true,
       };
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, envInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, envInfo);
 
       expect(output).toContain("●");
     });
 
     it("does not show dirty indicator when git is clean", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       // The dot indicator should not appear for clean repos
       // Note: we look for " ● " with spaces to distinguish from progress bars
@@ -125,7 +136,7 @@ describe("Renderer", () => {
         ...defaultBlockInfo,
         percentUsed: 80, // At warning threshold
       };
-      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toContain("80%");
     });
@@ -136,7 +147,7 @@ describe("Renderer", () => {
         ...defaultBlockInfo,
         percentUsed: 100,
       };
-      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toContain("100%");
     });
@@ -149,7 +160,7 @@ describe("Renderer", () => {
         ...defaultBlockInfo,
         timeRemaining: 180, // 3 hours
       };
-      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toContain("3h");
     });
@@ -160,7 +171,7 @@ describe("Renderer", () => {
         ...defaultBlockInfo,
         timeRemaining: 45, // 45 minutes
       };
-      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toContain("45m");
     });
@@ -179,7 +190,7 @@ describe("Renderer", () => {
         sevenDayOpusTrend: null,
         sevenDaySonnetTrend: null,
       };
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo, trendInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo, trendInfo);
 
       expect(output).toContain("↑");
     });
@@ -196,7 +207,7 @@ describe("Renderer", () => {
         sevenDayOpusTrend: null,
         sevenDaySonnetTrend: null,
       };
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo, trendInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo, trendInfo);
 
       expect(output).toContain("↓");
     });
@@ -213,7 +224,7 @@ describe("Renderer", () => {
         sevenDayOpusTrend: null,
         sevenDaySonnetTrend: null,
       };
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo, trendInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo, trendInfo);
 
       expect(output).not.toContain("↑");
       expect(output).not.toContain("↓");
@@ -223,7 +234,7 @@ describe("Renderer", () => {
   describe("null data handling", () => {
     it("handles null block info", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
-      const output = renderer.render(null, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(null, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toBeTruthy();
       expect(output).not.toMatch(/◫\s*--/); // Block segment should be hidden, not show "--"
@@ -231,7 +242,7 @@ describe("Renderer", () => {
 
     it("handles null weekly info", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
-      const output = renderer.render(defaultBlockInfo, null, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, null, null, defaultEnvInfo);
 
       expect(output).toBeTruthy();
     });
@@ -244,7 +255,7 @@ describe("Renderer", () => {
         resetAt: null,
         isRealtime: false,
       };
-      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(blockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toContain("--");
     });
@@ -255,7 +266,7 @@ describe("Renderer", () => {
         ...defaultEnvInfo,
         gitBranch: null,
       };
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, envInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, envInfo);
 
       expect(output).toBeTruthy();
       expect(output).not.toContain("null");
@@ -267,7 +278,7 @@ describe("Renderer", () => {
         ...defaultEnvInfo,
         model: null,
       };
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, envInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, envInfo);
 
       expect(output).toBeTruthy();
     });
@@ -276,7 +287,7 @@ describe("Renderer", () => {
   describe("text vs nerd font modes", () => {
     it("uses nerd font symbols by default", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       // Should contain powerline arrow
       expect(output).toContain("\ue0b0");
@@ -288,7 +299,7 @@ describe("Renderer", () => {
         display: { useNerdFonts: false },
       };
       const renderer = new Renderer(config);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       // Should not contain powerline arrow
       expect(output).not.toContain("\ue0b0");
@@ -308,7 +319,7 @@ describe("Renderer", () => {
         },
       };
       const renderer = new Renderer(config);
-      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
       // Should contain progress bar characters
       expect(output).toMatch(/[█░]/);
@@ -336,7 +347,7 @@ describe("Renderer", () => {
         },
       };
       const renderer = new Renderer(config);
-      const output = renderer.render(defaultBlockInfo, weeklyInfoWithModelData, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, weeklyInfoWithModelData, defaultBillingInfo, defaultEnvInfo);
 
       expect(output).toContain("47%");
       // Should not show Opus/Sonnet symbols
@@ -354,7 +365,7 @@ describe("Renderer", () => {
       };
       const renderer = new Renderer(config);
       // defaultEnvInfo has model: "Opus 4.5"
-      const output = renderer.render(defaultBlockInfo, weeklyInfoWithModelData, defaultEnvInfo);
+      const output = renderer.render(defaultBlockInfo, weeklyInfoWithModelData, defaultBillingInfo, defaultEnvInfo);
 
       // Should show overall percentage
       expect(output).toContain("47%");
@@ -379,7 +390,7 @@ describe("Renderer", () => {
         ...defaultEnvInfo,
         model: "Sonnet 4",
       };
-      const output = renderer.render(defaultBlockInfo, weeklyInfoWithModelData, sonnetEnvInfo);
+      const output = renderer.render(defaultBlockInfo, weeklyInfoWithModelData, defaultBillingInfo, sonnetEnvInfo);
 
       // Should show both Sonnet (7%) and Overall (47%) with separator
       expect(output).toContain("7%");

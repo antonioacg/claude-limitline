@@ -3,6 +3,7 @@ import { getTheme, ansi, type ColorTheme, type SegmentColor } from "./themes/ind
 import { type LimitlineConfig, type SegmentName } from "./config/index.js";
 import { type BlockInfo } from "./segments/block.js";
 import { type WeeklyInfo } from "./segments/weekly.js";
+import { type BillingSegmentInfo } from "./segments/billing.js";
 import { type EnvironmentInfo } from "./utils/environment.js";
 import { type TrendInfo } from "./utils/oauth.js";
 import { getTerminalWidth } from "./utils/terminal.js";
@@ -12,6 +13,8 @@ interface SymbolSet {
   weekly: string;
   opus: string;
   sonnet: string;
+  billing: string;
+  autoReload: string;
   bottleneck: string;
   rightArrow: string;
   leftArrow: string;
@@ -33,6 +36,7 @@ interface Segment {
 interface RenderContext {
   blockInfo: BlockInfo | null;
   weeklyInfo: WeeklyInfo | null;
+  billingInfo: BillingSegmentInfo | null;
   envInfo: EnvironmentInfo;
   trendInfo: TrendInfo | null;
   compact: boolean;
@@ -57,6 +61,8 @@ export class Renderer {
       weekly: symbolSet.weekly_cost,
       opus: symbolSet.opus_cost,
       sonnet: symbolSet.sonnet_cost,
+      billing: symbolSet.billing,
+      autoReload: symbolSet.auto_reload,
       bottleneck: symbolSet.bottleneck,
       rightArrow: symbolSet.right,
       leftArrow: symbolSet.left,
@@ -197,7 +203,8 @@ export class Renderer {
       return null;
     }
 
-    const dirtyIndicator = "";
+    const showDirty = this.config.git?.showDirtyIndicator ?? true;
+    const dirtyIndicator = (showDirty && ctx.envInfo.gitDirty) ? " ●" : "";
     const icon = this.usePowerline ? this.symbols.branch : "";
     const prefix = icon ? `${icon} ` : "";
 
@@ -394,6 +401,51 @@ export class Renderer {
     };
   }
 
+  private formatCurrency(amount: number | null, currency: string | null): string {
+    if (amount === null || currency === null) return "--";
+
+    // Convert from minor units (cents) to major units
+    const majorAmount = amount / 100;
+
+    // Format based on currency
+    if (currency === "BRL") {
+      return `R$${majorAmount.toFixed(2)}`;
+    } else if (currency === "USD") {
+      return `$${majorAmount.toFixed(2)}`;
+    } else if (currency === "EUR") {
+      return `€${majorAmount.toFixed(2)}`;
+    }
+
+    // Fallback for other currencies
+    return `${currency}${majorAmount.toFixed(2)}`;
+  }
+
+  private renderBilling(ctx: RenderContext): Segment | null {
+    if (!ctx.billingInfo || !this.config.billing?.enabled) {
+      return null;
+    }
+
+    const info = ctx.billingInfo;
+
+    // Only show spent amount (only data available from OAuth usage API)
+    const spentStr = this.formatCurrency(info.spentAmount, info.spentCurrency);
+
+    // Use context colors for billing (configurable thresholds)
+    let colors = this.theme.context;
+    const warningThreshold = this.config.billing?.spendingWarning;
+    const criticalThreshold = this.config.billing?.spendingCritical;
+    if (criticalThreshold && info.spentAmount !== null && info.spentAmount >= criticalThreshold) {
+      colors = this.theme.critical;
+    } else if (warningThreshold && info.spentAmount !== null && info.spentAmount >= warningThreshold) {
+      colors = this.theme.warning;
+    }
+
+    return {
+      text: spentStr,
+      colors,
+    };
+  }
+
   private getSegment(name: SegmentName, ctx: RenderContext): Segment | null {
     switch (name) {
       case "directory":
@@ -408,6 +460,8 @@ export class Renderer {
         return this.renderWeekly(ctx);
       case "context":
         return this.renderContext(ctx);
+      case "billing":
+        return this.renderBilling(ctx);
       default:
         return null;
     }
@@ -416,6 +470,7 @@ export class Renderer {
   render(
     blockInfo: BlockInfo | null,
     weeklyInfo: WeeklyInfo | null,
+    billingInfo: BillingSegmentInfo | null,
     envInfo: EnvironmentInfo,
     trendInfo: TrendInfo | null = null
   ): string {
@@ -423,6 +478,7 @@ export class Renderer {
     const ctx: RenderContext = {
       blockInfo,
       weeklyInfo,
+      billingInfo,
       envInfo,
       trendInfo,
       compact,

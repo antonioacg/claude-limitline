@@ -351,3 +351,76 @@ export function clearUsageCache(): void {
   cacheTimestamp = 0;
   cachedToken = null;
 }
+
+// ==================== Billing API (OAuth usage API only) ====================
+
+export interface BillingInfo {
+  spentAmount: number | null;     // Amount spent in minor units (cents)
+  spentCurrency: string | null;
+  isRealtime: boolean;
+}
+
+// Cache for billing data
+let cachedBilling: BillingInfo | null = null;
+let billingCacheTimestamp = 0;
+let cachedBillingToken: string | null = null;
+
+export async function getBillingInfo(
+  pollIntervalMinutes: number = 15
+): Promise<BillingInfo | null> {
+  const now = Date.now();
+  const cacheAgeMs = now - billingCacheTimestamp;
+  const pollIntervalMs = pollIntervalMinutes * 60 * 1000;
+
+  // Return cached data if still fresh
+  if (cachedBilling && cacheAgeMs < pollIntervalMs) {
+    debug(`Using cached billing data (age: ${Math.round(cacheAgeMs / 1000)}s)`);
+    return cachedBilling;
+  }
+
+  // Get OAuth token if not cached
+  if (!cachedBillingToken) {
+    cachedBillingToken = await getOAuthToken();
+    if (!cachedBillingToken) {
+      debug("Could not retrieve OAuth token for billing info");
+      return null;
+    }
+  }
+
+  // Fetch usage data which contains extra_usage billing info
+  const usageResponse = await fetchUsageFromAPI(cachedBillingToken);
+  if (!usageResponse?.raw) {
+    debug("Could not fetch usage data for billing info");
+    return null;
+  }
+
+  const raw = usageResponse.raw as {
+    extra_usage?: {
+      is_enabled: boolean;
+      used_credits: number;
+      currency?: string;
+    };
+  };
+
+  if (raw.extra_usage) {
+    // Create billing info from usage API response
+    // Note: We only get spent amount from this API
+    cachedBilling = {
+      spentAmount: raw.extra_usage.used_credits,
+      spentCurrency: raw.extra_usage.currency ?? "BRL",
+      isRealtime: true,
+    };
+    billingCacheTimestamp = now;
+    debug("Refreshed billing cache from usage API");
+  } else {
+    cachedBilling = null;
+  }
+
+  return cachedBilling;
+}
+
+export function clearBillingCache(): void {
+  cachedBilling = null;
+  billingCacheTimestamp = 0;
+  cachedBillingToken = null;
+}
