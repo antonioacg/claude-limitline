@@ -5,7 +5,7 @@ import { BlockProvider, WeeklyProvider, BillingProvider } from "./segments/index
 import { Renderer } from "./renderer.js";
 import { getEnvironmentInfo } from "./utils/environment.js";
 import { readHookData } from "./utils/claude-hook.js";
-import { getUsageTrend } from "./utils/oauth.js";
+import { getUsageTrend, getCurrentProvider } from "./utils/oauth.js";
 import { debug } from "./utils/logger.js";
 
 async function main(): Promise<void> {
@@ -22,6 +22,11 @@ async function main(): Promise<void> {
     const envInfo = getEnvironmentInfo(hookData);
     debug("Environment info:", JSON.stringify(envInfo));
 
+    // Detect provider to check capabilities
+    const provider = await getCurrentProvider();
+    const supportsUsage = provider?.supportsUsage ?? true;
+    debug(`Provider: ${provider?.name}, supportsUsage: ${supportsUsage}`);
+
     // Initialize providers
     const blockProvider = new BlockProvider();
     const weeklyProvider = new WeeklyProvider();
@@ -31,8 +36,9 @@ async function main(): Promise<void> {
     const pollInterval = config.budget?.pollInterval ?? 15;
 
     const [blockInfo, weeklyInfo, billingInfo] = await Promise.all([
-      config.block?.enabled ? blockProvider.getBlockInfo(pollInterval) : null,
-      config.weekly?.enabled
+      // Only fetch usage if provider supports it (Moonshot doesn't)
+      config.block?.enabled && supportsUsage ? blockProvider.getBlockInfo(pollInterval) : null,
+      config.weekly?.enabled && supportsUsage
         ? weeklyProvider.getWeeklyInfo(
             config.budget?.resetDay,
             config.budget?.resetHour,

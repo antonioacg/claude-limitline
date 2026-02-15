@@ -6,6 +6,10 @@ export interface BillingSegmentInfo {
   spentAmount: number | null;        // in minor units (cents)
   spentCurrency: string | null;
   isRealtime: boolean;
+  // Moonshot-specific balances
+  availableBalance?: number | null;  // Total available (cash + voucher)
+  cashBalance?: number | null;       // Cash only
+  voucherBalance?: number | null;    // Promotional credits
 }
 
 export class BillingProvider {
@@ -42,6 +46,9 @@ export class BillingProvider {
         spentAmount: billing.spentAmount,
         spentCurrency: billing.spentCurrency,
         isRealtime: billing.isRealtime,
+        availableBalance: billing.availableBalance,
+        cashBalance: billing.cashBalance,
+        voucherBalance: billing.voucherBalance,
       };
     } catch (error) {
       debug("Error getting billing info:", error);

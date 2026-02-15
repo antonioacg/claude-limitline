@@ -427,7 +427,17 @@ export class Renderer {
 
     const info = ctx.billingInfo;
 
-    // Only show spent amount (only data available from OAuth usage API)
+    // If we have available balance (Moonshot), show it
+    if (info.availableBalance !== undefined && info.availableBalance !== null) {
+      const balanceStr = this.formatCurrency(info.availableBalance, info.spentCurrency);
+
+      return {
+        text: balanceStr,
+        colors: this.theme.context,
+      };
+    }
+
+    // Fallback: Only show spent amount
     const spentStr = this.formatCurrency(info.spentAmount, info.spentCurrency);
 
     // Use context colors for billing (configurable thresholds)
