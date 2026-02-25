@@ -75,7 +75,7 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
   },
   git: {
     enabled: true,
-    showDirtyIndicator: true,
+    showDirtyIndicator: false,
   },
   model: {
     enabled: true,

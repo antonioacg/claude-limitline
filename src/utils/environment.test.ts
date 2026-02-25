@@ -15,14 +15,14 @@ vi.mock("child_process", () => ({
 
 describe("environment", () => {
   describe("getDirectoryName", () => {
-    it("returns project_dir basename from hook data", () => {
+    it("returns current_dir basename from hook data", () => {
       const hookData = {
         workspace: {
           current_dir: "/home/user/projects/myapp/src",
           project_dir: "/home/user/projects/myapp",
         },
       };
-      expect(getDirectoryName(hookData)).toBe("myapp");
+      expect(getDirectoryName(hookData)).toBe("src");
     });
 
     it("returns cwd basename from hook data when no workspace", () => {
@@ -48,7 +48,7 @@ describe("environment", () => {
           project_dir: "C:/Users/user/projects/app",
         },
       };
-      expect(getDirectoryName(hookData)).toBe("app");
+      expect(getDirectoryName(hookData)).toBe("src");
     });
   });
 
@@ -219,20 +219,17 @@ describe("environment", () => {
 
       const result = getEnvironmentInfo(hookData);
 
-      expect(result.directory).toBe("project");
+      expect(result.directory).toBe("src");
       expect(result.gitBranch).toBe("develop");
       expect(result.gitDirty).toBe(true);
       expect(result.model).toBe("Opus 4.5");
     });
 
     it("handles missing hook data", () => {
-      vi.mocked(execSync)
-        .mockReturnValueOnce("main\n")
-        .mockReturnValueOnce("");
-
       const result = getEnvironmentInfo(null);
 
-      expect(result.gitBranch).toBe("main");
+      // Without hook data, git branch/dirty return null/false (no cwd to use)
+      expect(result.gitBranch).toBeNull();
       expect(result.gitDirty).toBe(false);
       expect(result.model).toBeNull();
     });

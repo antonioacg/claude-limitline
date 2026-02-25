@@ -542,6 +542,11 @@ export class Renderer {
       output += "\n" + ansi.fg(gitSegment.colors.fg) + gitSegment.text + RESET_CODE;
     }
 
+    // Session ID on its own line
+    if (ctx.envInfo.sessionId) {
+      output += "\n" + ansi.fg(this.theme.git.fg) + ctx.envInfo.sessionId + RESET_CODE;
+    }
+
     return output;
   }
 }

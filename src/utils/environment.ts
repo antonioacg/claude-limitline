@@ -86,6 +86,7 @@ export interface EnvironmentInfo {
   gitDirty: boolean;
   model: string | null;
   contextPercent: number;
+  sessionId: string | null;
 }
 
 /**
@@ -118,5 +119,6 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null): Environmen
     gitDirty: cwd ? hasGitChanges(cwd) : false,
     model: getClaudeModel(hookData),
     contextPercent: getContextPercent(hookData),
+    sessionId: hookData?.session_id ?? null,
   };
 }

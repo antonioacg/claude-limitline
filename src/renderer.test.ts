@@ -19,6 +19,7 @@ describe("Renderer", () => {
     gitDirty: false,
     model: "Opus 4.5",
     contextPercent: 42,
+    sessionId: null,
   };
 
   const defaultBlockInfo: BlockInfo = {
@@ -108,7 +109,7 @@ describe("Renderer", () => {
       expect(output).toBe("");
     });
 
-    it("shows dirty indicator when git has changes", () => {
+    it("does not show dirty indicator by default", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
       const envInfo: EnvironmentInfo = {
         ...defaultEnvInfo,
@@ -116,7 +117,7 @@ describe("Renderer", () => {
       };
       const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, envInfo);
 
-      expect(output).toContain("●");
+      expect(output).not.toContain("●");
     });
 
     it("does not show dirty indicator when git is clean", () => {
@@ -289,8 +290,8 @@ describe("Renderer", () => {
       const renderer = new Renderer(DEFAULT_CONFIG);
       const output = renderer.render(defaultBlockInfo, defaultWeeklyInfo, defaultBillingInfo, defaultEnvInfo);
 
-      // Should contain powerline arrow
-      expect(output).toContain("\ue0b0");
+      // Should contain branch icon (arrows removed for cleaner look)
+      expect(output).toContain("\ue0a0");
     });
 
     it("uses text symbols when nerd fonts disabled", () => {
