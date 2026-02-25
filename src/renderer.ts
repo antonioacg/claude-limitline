@@ -494,55 +494,58 @@ export class Renderer {
       compact,
     };
 
-    // Build left segments (existing behavior)
-    const leftSegments: Segment[] = [];
-    let gitSegment: Segment | null = null;
     const order = this.config.segmentOrder ?? ["directory", "git", "model", "block", "weekly"];
 
+    // Line 1: directory + git
+    const line1Segments: Segment[] = [];
     for (const name of order) {
-      // Skip context - it goes on the right side
-      if (name === "context") continue;
-      // Git goes on a separate line
-      if (name === "git") {
-        gitSegment = this.getSegment(name, ctx);
-        continue;
+      if (name === "directory" || name === "git") {
+        const segment = this.getSegment(name, ctx);
+        if (segment) line1Segments.push(segment);
       }
+    }
+
+    // Line 2: everything else (model, block, weekly, context)
+    const line2Left: Segment[] = [];
+    for (const name of order) {
+      if (name === "directory" || name === "git" || name === "context") continue;
       const segment = this.getSegment(name, ctx);
-      if (segment) {
-        leftSegments.push(segment);
-      }
+      if (segment) line2Left.push(segment);
     }
-
-    // Build right segments (context with left arrows)
-    const rightSegments: Segment[] = [];
     const contextSegment = this.renderContext(ctx);
-    if (contextSegment) {
-      rightSegments.push(contextSegment);
-    }
 
-    // Render both sides
+    // Render
     let output = "";
 
-    if (this.usePowerline) {
-      if (leftSegments.length > 0) {
-        output += this.renderPowerline(leftSegments);
+    // Line 1
+    if (line1Segments.length > 0) {
+      if (this.usePowerline) {
+        output += this.renderPowerline(line1Segments);
+      } else {
+        output += this.renderFallback(line1Segments);
       }
-      if (rightSegments.length > 0) {
-        output += this.renderRightPowerline(rightSegments);
+    }
+
+    // Line 2
+    let line2 = "";
+    if (this.usePowerline) {
+      if (line2Left.length > 0) {
+        line2 += this.renderPowerline(line2Left);
+      }
+      if (contextSegment) {
+        line2 += this.renderRightPowerline([contextSegment]);
       }
     } else {
-      const allSegments = [...leftSegments, ...rightSegments];
-      if (allSegments.length > 0) {
-        output = this.renderFallback(allSegments);
+      const allLine2 = contextSegment ? [...line2Left, contextSegment] : line2Left;
+      if (allLine2.length > 0) {
+        line2 += this.renderFallback(allLine2);
       }
     }
-
-    // Git on separate line
-    if (gitSegment) {
-      output += "\n" + ansi.fg(gitSegment.colors.fg) + gitSegment.text + RESET_CODE;
+    if (line2) {
+      output += "\n" + line2;
     }
 
-    // Session ID on its own line
+    // Line 3: session ID
     if (ctx.envInfo.sessionId) {
       output += "\n" + ansi.fg(this.theme.git.fg) + ctx.envInfo.sessionId + RESET_CODE;
     }
