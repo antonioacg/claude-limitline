@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import type { Provider, UsageResponse, BillingInfo } from "./types.js";
+import { type Provider, type UsageResponse, type BillingInfo, RateLimitError } from "./types.js";
 import { debug } from "../utils/logger.js";
 
 const execAsync = promisify(exec);
@@ -34,39 +34,87 @@ export class AnthropicProvider implements Provider {
   readonly name = "Anthropic";
   readonly supportsUsage = true;
 
+  // Deduplication: fetchUsage() and fetchBilling() hit the same endpoint,
+  // so we share a single in-flight request + short TTL cache to avoid
+  // concurrent duplicate HTTP calls that trigger rate limiting.
+  private inflightRequest: Promise<AnthropicApiResponse | null> | null = null;
+  private responseCache: AnthropicApiResponse | null = null;
+  private responseCacheTime = 0;
+  private static readonly DEDUP_TTL_MS = 5000;
+
   async getToken(): Promise<string | null> {
     return getAnthropicOAuthToken();
   }
 
-  async fetchUsage(): Promise<UsageResponse | null> {
+  /**
+   * Shared API call with in-flight deduplication.
+   * Multiple concurrent callers get the same promise instead of separate HTTP requests.
+   */
+  private async fetchApiResponse(): Promise<AnthropicApiResponse | null> {
+    const now = Date.now();
+    if (this.responseCache && (now - this.responseCacheTime) < AnthropicProvider.DEDUP_TTL_MS) {
+      debug("Using dedup cache for Anthropic API response");
+      return this.responseCache;
+    }
+
+    if (this.inflightRequest) {
+      debug("Joining in-flight Anthropic API request");
+      return this.inflightRequest;
+    }
+
+    this.inflightRequest = this.doFetchApi();
+    try {
+      const result = await this.inflightRequest;
+      if (result) {
+        this.responseCache = result;
+        this.responseCacheTime = Date.now();
+      }
+      return result;
+    } finally {
+      this.inflightRequest = null;
+    }
+  }
+
+  private async doFetchApi(): Promise<AnthropicApiResponse | null> {
     const token = await this.getToken();
     if (!token) {
       debug("No Anthropic OAuth token available");
       return null;
     }
 
+    const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "claude-limitline/1.0.0",
+        Authorization: `Bearer ${token}`,
+        "anthropic-beta": "oauth-2025-04-20",
+      },
+    });
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("retry-after");
+      const retryMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : undefined;
+      throw new RateLimitError(retryMs);
+    }
+
+    if (!response.ok) {
+      debug(`Anthropic usage API returned status ${response.status}: ${response.statusText}`);
+      return null;
+    }
+
+    const data = (await response.json()) as AnthropicApiResponse;
+    debug("Anthropic usage API response:", JSON.stringify(data));
+    return data;
+  }
+
+  async fetchUsage(): Promise<UsageResponse | null> {
     try {
-      const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "claude-limitline/1.0.0",
-          Authorization: `Bearer ${token}`,
-          "anthropic-beta": "oauth-2025-04-20",
-        },
-      });
-
-      if (!response.ok) {
-        debug(`Anthropic usage API returned status ${response.status}: ${response.statusText}`);
-        return null;
-      }
-
-      const data = (await response.json()) as AnthropicApiResponse;
-      debug("Anthropic usage API response:", JSON.stringify(data));
+      const data = await this.fetchApiResponse();
+      if (!data) return null;
 
       const windows: UsageResponse["windows"] = [];
 
-      // Map Anthropic-specific windows to generic windows
       if (data.five_hour) {
         windows.push({
           name: "short",
@@ -103,39 +151,18 @@ export class AnthropicProvider implements Provider {
         });
       }
 
-      return {
-        windows,
-        raw: data,
-      };
+      return { windows, raw: data };
     } catch (error) {
+      if (error instanceof RateLimitError) throw error;
       debug("Failed to fetch usage from Anthropic API:", error);
       return null;
     }
   }
 
   async fetchBilling(): Promise<BillingInfo | null> {
-    const token = await this.getToken();
-    if (!token) {
-      debug("No Anthropic OAuth token available for billing");
-      return null;
-    }
-
     try {
-      const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "claude-limitline/1.0.0",
-          Authorization: `Bearer ${token}`,
-          "anthropic-beta": "oauth-2025-04-20",
-        },
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = (await response.json()) as AnthropicApiResponse;
+      const data = await this.fetchApiResponse();
+      if (!data) return null;
 
       if (data.extra_usage) {
         return {
@@ -147,6 +174,7 @@ export class AnthropicProvider implements Provider {
 
       return null;
     } catch (error) {
+      if (error instanceof RateLimitError) throw error;
       debug("Failed to fetch billing from Anthropic API:", error);
       return null;
     }

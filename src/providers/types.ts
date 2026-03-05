@@ -89,6 +89,17 @@ export interface Provider {
 }
 
 /**
+ * Thrown when a provider API returns 429 (rate limited).
+ * Consumers should implement backoff based on retryAfterMs.
+ */
+export class RateLimitError extends Error {
+  constructor(public retryAfterMs?: number) {
+    super("Rate limited");
+    this.name = "RateLimitError";
+  }
+}
+
+/**
  * Provider configuration options
  */
 export interface ProviderConfig {

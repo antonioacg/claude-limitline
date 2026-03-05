@@ -4,6 +4,7 @@ import {
   getRealtimeUsage,
   clearUsageCache,
   clearBillingCache,
+  clearFileCache,
   getCurrentProvider,
   clearProviderCache,
 } from "./oauth.js";
@@ -20,6 +21,7 @@ describe("oauth utilities", () => {
     vi.resetAllMocks();
     clearUsageCache();
     clearBillingCache();
+    clearFileCache();
     clearProviderCache();
     delete process.env.ANTHROPIC_BASE_URL;
     delete process.env.ANTHROPIC_AUTH_TOKEN;

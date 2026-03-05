@@ -9,6 +9,7 @@ import { MoonshotProvider } from "./moonshot.js";
 import { debug } from "../utils/logger.js";
 
 export type { Provider, UsageResponse, UsageWindow, BillingInfo, TrendDirection, TrendInfo, ProviderConfig } from "./types.js";
+export { RateLimitError } from "./types.js";
 export { AnthropicProvider } from "./anthropic.js";
 export { MoonshotProvider } from "./moonshot.js";
 
