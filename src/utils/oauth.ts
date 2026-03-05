@@ -52,18 +52,33 @@ function writeFileCache(cache: FileCache): void {
   }
 }
 
+let lockRefCount = 0;
+
 function acquireLock(): boolean {
+  // Re-entrant: same process already holds the lock (usage + billing concurrent)
+  if (lockRefCount > 0) {
+    lockRefCount++;
+    return true;
+  }
+
   try {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
     fs.writeFileSync(LOCK_FILE, String(process.pid), { flag: "wx" });
+    lockRefCount = 1;
     return true;
   } catch {
-    // Lock exists — check if stale (crashed process)
+    // Lock exists — check if held by us (race within same process) or stale
     try {
+      const content = fs.readFileSync(LOCK_FILE, "utf-8").trim();
+      if (content === String(process.pid)) {
+        lockRefCount = 1;
+        return true;
+      }
       const stat = fs.statSync(LOCK_FILE);
       if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
         fs.unlinkSync(LOCK_FILE);
         fs.writeFileSync(LOCK_FILE, String(process.pid), { flag: "wx" });
+        lockRefCount = 1;
         return true;
       }
     } catch { /* lost race or can't stat — another process is active */ }
@@ -72,6 +87,11 @@ function acquireLock(): boolean {
 }
 
 function releaseLock(): void {
+  if (lockRefCount > 1) {
+    lockRefCount--;
+    return;
+  }
+  lockRefCount = 0;
   try { fs.unlinkSync(LOCK_FILE); } catch { /* already cleaned up */ }
 }
 
