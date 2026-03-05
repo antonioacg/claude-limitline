@@ -39,7 +39,7 @@ export interface DisplayConfig {
   compactWidth?: number;  // Terminal width threshold for compact mode (default 80)
 }
 
-export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing";
+export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId";
 
 export interface BillingSegmentConfig extends SimpleSegmentConfig {
   warningThreshold?: number;   // Utilization % threshold for warning (default 70)
@@ -57,7 +57,7 @@ export interface LimitlineConfig {
   billing?: BillingSegmentConfig;   // Show billing info (spent, balance, auto-reload)
   budget?: BudgetConfig;
   theme?: string;
-  segmentOrder?: SegmentName[];     // Custom order for segments
+  segmentOrder?: SegmentName[] | SegmentName[][];  // Flat = single line, nested = one line per inner array
   showTrend?: boolean;              // Show ↑↓ trend arrows for usage
   debug?: boolean;                  // Enable debug logging (env CLAUDE_LIMITLINE_DEBUG overrides)
   logFile?: string;                 // Log file path (env CLAUDE_LIMITLINE_LOG_FILE overrides)
@@ -105,6 +105,9 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
     criticalThreshold: 90,
   },
   theme: "dark",
-  segmentOrder: ["directory", "git", "model", "block", "weekly"],
+  segmentOrder: [
+    ["directory", "git"],
+    ["model", "block", "weekly"],
+  ],
   showTrend: true,
 };

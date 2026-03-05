@@ -154,29 +154,6 @@ export class Renderer {
     return output;
   }
 
-  private renderRightPowerline(segments: Segment[]): string {
-    if (segments.length === 0) return "";
-
-    let output = "";
-
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-
-      output += RESET_CODE;
-      if (this.symbols.leftArrow) {
-        output += ansi.fg(seg.colors.bg) + this.symbols.leftArrow;
-      } else {
-        output += this.symbols.separator;
-      }
-
-      // Segment content with background and foreground
-      output += ansi.bg(seg.colors.bg) + ansi.fg(seg.colors.fg) + seg.text;
-    }
-
-    output += RESET_CODE;
-    return output;
-  }
-
   private renderFallback(segments: Segment[]): string {
     return segments
       .map(seg => ansi.bg(seg.colors.bg) + ansi.fg(seg.colors.fg) + seg.text + RESET_CODE)
@@ -464,6 +441,14 @@ export class Renderer {
     return { text, colors };
   }
 
+  private renderSessionId(ctx: RenderContext): Segment | null {
+    if (!ctx.envInfo.sessionId) return null;
+    return {
+      text: ctx.envInfo.sessionId,
+      colors: this.theme.git,
+    };
+  }
+
   private getSegment(name: SegmentName, ctx: RenderContext): Segment | null {
     switch (name) {
       case "directory":
@@ -480,9 +465,20 @@ export class Renderer {
         return this.renderContext(ctx);
       case "billing":
         return this.renderBilling(ctx);
+      case "sessionId":
+        return this.renderSessionId(ctx);
       default:
         return null;
     }
+  }
+
+  private normalizeSegmentOrder(order: SegmentName[] | SegmentName[][]): SegmentName[][] {
+    if (order.length === 0) return [];
+    if (Array.isArray(order[0])) {
+      return order as SegmentName[][];
+    }
+    // Flat array = single line (backward compat)
+    return [order as SegmentName[]];
   }
 
   render(
@@ -502,62 +498,29 @@ export class Renderer {
       compact,
     };
 
-    const order = this.config.segmentOrder ?? ["directory", "git", "model", "block", "weekly"];
+    const defaultOrder: SegmentName[][] = [
+      ["directory", "git"],
+      ["model", "block", "weekly"],
+    ];
+    const lines = this.normalizeSegmentOrder(this.config.segmentOrder ?? defaultOrder);
 
-    // Line 1: directory + git
-    const line1Segments: Segment[] = [];
-    for (const name of order) {
-      if (name === "directory" || name === "git") {
+    const renderedLines: string[] = [];
+
+    for (const lineOrder of lines) {
+      const segments: Segment[] = [];
+      for (const name of lineOrder) {
         const segment = this.getSegment(name, ctx);
-        if (segment) line1Segments.push(segment);
+        if (segment) segments.push(segment);
       }
-    }
+      if (segments.length === 0) continue;
 
-    // Line 2: everything else (model, block, weekly, context)
-    const line2Left: Segment[] = [];
-    for (const name of order) {
-      if (name === "directory" || name === "git" || name === "context") continue;
-      const segment = this.getSegment(name, ctx);
-      if (segment) line2Left.push(segment);
-    }
-    const contextSegment = this.renderContext(ctx);
-
-    // Render
-    let output = "";
-
-    // Line 1
-    if (line1Segments.length > 0) {
       if (this.usePowerline) {
-        output += this.renderPowerline(line1Segments);
+        renderedLines.push(this.renderPowerline(segments));
       } else {
-        output += this.renderFallback(line1Segments);
+        renderedLines.push(this.renderFallback(segments));
       }
     }
 
-    // Line 2
-    let line2 = "";
-    if (this.usePowerline) {
-      if (line2Left.length > 0) {
-        line2 += this.renderPowerline(line2Left);
-      }
-      if (contextSegment) {
-        line2 += this.renderRightPowerline([contextSegment]);
-      }
-    } else {
-      const allLine2 = contextSegment ? [...line2Left, contextSegment] : line2Left;
-      if (allLine2.length > 0) {
-        line2 += this.renderFallback(allLine2);
-      }
-    }
-    if (line2) {
-      output += "\n" + line2;
-    }
-
-    // Line 3: session ID
-    if (ctx.envInfo.sessionId) {
-      output += "\n" + ansi.fg(this.theme.git.fg) + ctx.envInfo.sessionId + RESET_CODE;
-    }
-
-    return output;
+    return renderedLines.join("\n");
   }
 }
