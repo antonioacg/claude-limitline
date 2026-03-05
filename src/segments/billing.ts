@@ -2,14 +2,15 @@ import { debug } from "../utils/logger.js";
 import { getBillingInfo } from "../utils/oauth.js";
 
 export interface BillingSegmentInfo {
-  // Amount spent (only data available from OAuth API)
-  spentAmount: number | null;        // in minor units (cents)
+  spentAmount: number | null;
   spentCurrency: string | null;
   isRealtime: boolean;
+  monthlyLimit?: number | null;
+  utilization?: number | null;
   // Moonshot-specific balances
-  availableBalance?: number | null;  // Total available (cash + voucher)
-  cashBalance?: number | null;       // Cash only
-  voucherBalance?: number | null;    // Promotional credits
+  availableBalance?: number | null;
+  cashBalance?: number | null;
+  voucherBalance?: number | null;
 }
 
 export class BillingProvider {
@@ -46,6 +47,8 @@ export class BillingProvider {
         spentAmount: billing.spentAmount,
         spentCurrency: billing.spentCurrency,
         isRealtime: billing.isRealtime,
+        monthlyLimit: billing.monthlyLimit,
+        utilization: billing.utilization,
         availableBalance: billing.availableBalance,
         cashBalance: billing.cashBalance,
         voucherBalance: billing.voucherBalance,

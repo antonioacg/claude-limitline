@@ -42,10 +42,8 @@ export interface DisplayConfig {
 export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing";
 
 export interface BillingSegmentConfig extends SimpleSegmentConfig {
-  // Billing only shows spent amount from OAuth usage API
-  // Balance and auto-reload are not available without browser session cookie
-  spendingWarning?: number;   // Amount in minor units (cents) to show warning color
-  spendingCritical?: number;  // Amount in minor units (cents) to show critical color
+  utilizationWarning?: number;   // Utilization % threshold for warning (default 70)
+  utilizationCritical?: number;  // Utilization % threshold for critical (default 90)
 }
 
 export interface LimitlineConfig {

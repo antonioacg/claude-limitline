@@ -32,12 +32,16 @@ export interface UsageResponse {
  * Billing information
  */
 export interface BillingInfo {
-  /** Amount spent in minor units (cents) */
+  /** Amount spent (whole currency units for Anthropic, cents for Moonshot) */
   spentAmount: number | null;
-  /** Currency code, e.g., "BRL", "USD" */
+  /** Currency code, e.g., "USD" */
   spentCurrency: string | null;
   /** Whether this is real-time data */
   isRealtime: boolean;
+  /** Monthly spending limit (whole currency units) — null if no limit */
+  monthlyLimit?: number | null;
+  /** Spending utilization percentage (0-100) — null if no limit */
+  utilization?: number | null;
   /** Available balance in minor units (cents) - for providers like Moonshot */
   availableBalance?: number | null;
   /** Cash balance in minor units (cents) - for providers like Moonshot */

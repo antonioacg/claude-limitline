@@ -401,23 +401,22 @@ export class Renderer {
     };
   }
 
-  private formatCurrency(amount: number | null, currency: string | null): string {
-    if (amount === null || currency === null) return "--";
-
-    // Convert from minor units (cents) to major units
-    const majorAmount = amount / 100;
-
-    // Format based on currency
-    if (currency === "BRL") {
-      return `R$${majorAmount.toFixed(2)}`;
-    } else if (currency === "USD") {
-      return `$${majorAmount.toFixed(2)}`;
-    } else if (currency === "EUR") {
-      return `€${majorAmount.toFixed(2)}`;
+  private formatCurrencySymbol(currency: string | null): string {
+    switch (currency) {
+      case "BRL": return "R$";
+      case "USD": return "$";
+      case "EUR": return "€";
+      default: return currency ?? "$";
     }
+  }
 
-    // Fallback for other currencies
-    return `${currency}${majorAmount.toFixed(2)}`;
+  /**
+   * Format currency amount. Moonshot uses minor units (cents), Anthropic uses whole units.
+   */
+  private formatCurrency(amount: number | null, currency: string | null, minorUnits = false): string {
+    if (amount === null || currency === null) return "--";
+    const value = minorUnits ? amount / 100 : amount;
+    return `${this.formatCurrencySymbol(currency)}${value.toFixed(2)}`;
   }
 
   private renderBilling(ctx: RenderContext): Segment | null {
@@ -427,33 +426,42 @@ export class Renderer {
 
     const info = ctx.billingInfo;
 
-    // If we have available balance (Moonshot), show it
+    // Moonshot: show available balance (in minor units / cents)
     if (info.availableBalance !== undefined && info.availableBalance !== null) {
-      const balanceStr = this.formatCurrency(info.availableBalance, info.spentCurrency);
-
       return {
-        text: balanceStr,
+        text: this.formatCurrency(info.availableBalance, info.spentCurrency, true),
         colors: this.theme.context,
       };
     }
 
-    // Fallback: Only show spent amount
-    const spentStr = this.formatCurrency(info.spentAmount, info.spentCurrency);
+    // Anthropic extra_usage: {currency symbol} {used_credits} [{utilization}%]
+    const symbol = this.formatCurrencySymbol(info.spentCurrency);
+    const hasLimit = info.monthlyLimit != null && info.monthlyLimit > 0;
+    const utilization = info.utilization;
 
-    // Use context colors for billing (configurable thresholds)
-    let colors = this.theme.context;
-    const warningThreshold = this.config.billing?.spendingWarning;
-    const criticalThreshold = this.config.billing?.spendingCritical;
-    if (criticalThreshold && info.spentAmount !== null && info.spentAmount >= criticalThreshold) {
-      colors = this.theme.critical;
-    } else if (warningThreshold && info.spentAmount !== null && info.spentAmount >= warningThreshold) {
-      colors = this.theme.warning;
+    let text: string;
+    if (info.spentAmount !== null) {
+      text = `${symbol}${info.spentAmount.toFixed(2)}`;
+      if (hasLimit && utilization != null) {
+        text += ` [${Math.round(utilization)}%]`;
+      }
+    } else {
+      text = "--";
     }
 
-    return {
-      text: spentStr,
-      colors,
-    };
+    // Color thresholds based on utilization (only when limit exists)
+    let colors = this.theme.context;
+    if (hasLimit && utilization != null) {
+      const critPct = this.config.billing?.utilizationCritical ?? 90;
+      const warnPct = this.config.billing?.utilizationWarning ?? 70;
+      if (utilization >= critPct) {
+        colors = this.theme.critical;
+      } else if (utilization >= warnPct) {
+        colors = this.theme.warning;
+      }
+    }
+
+    return { text, colors };
   }
 
   private getSegment(name: SegmentName, ctx: RenderContext): Segment | null {

@@ -26,6 +26,8 @@ interface AnthropicApiResponse {
   extra_usage?: {
     is_enabled: boolean;
     used_credits: number;
+    monthly_limit?: number;
+    utilization?: number;
     currency?: string;
   };
 }
@@ -167,7 +169,9 @@ export class AnthropicProvider implements Provider {
       if (data.extra_usage) {
         return {
           spentAmount: data.extra_usage.used_credits,
-          spentCurrency: data.extra_usage.currency ?? "BRL",
+          spentCurrency: data.extra_usage.currency ?? "USD",
+          monthlyLimit: data.extra_usage.monthly_limit ?? null,
+          utilization: data.extra_usage.utilization ?? null,
           isRealtime: true,
         };
       }
