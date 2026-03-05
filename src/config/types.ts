@@ -61,6 +61,8 @@ export interface LimitlineConfig {
   theme?: string;
   segmentOrder?: SegmentName[];     // Custom order for segments
   showTrend?: boolean;              // Show ↑↓ trend arrows for usage
+  debug?: boolean;                  // Enable debug logging (env CLAUDE_LIMITLINE_DEBUG overrides)
+  logFile?: string;                 // Log file path (env CLAUDE_LIMITLINE_LOG_FILE overrides)
 }
 
 export const DEFAULT_CONFIG: LimitlineConfig = {

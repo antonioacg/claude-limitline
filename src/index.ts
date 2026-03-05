@@ -6,12 +6,13 @@ import { Renderer } from "./renderer.js";
 import { getEnvironmentInfo } from "./utils/environment.js";
 import { readHookData } from "./utils/claude-hook.js";
 import { getUsageTrend, getCurrentProvider } from "./utils/oauth.js";
-import { debug } from "./utils/logger.js";
+import { debug, initLogger } from "./utils/logger.js";
 
 async function main(): Promise<void> {
   try {
     // Load configuration
     const config = loadConfig();
+    initLogger(config);
     debug("Config loaded:", JSON.stringify(config));
 
     // Read hook data from stdin (Claude Code passes this)

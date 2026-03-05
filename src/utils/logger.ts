@@ -2,9 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-// Debug logging configuration
-const DEBUG = process.env.CLAUDE_LIMITLINE_DEBUG === "true";
-const LOG_FILE = process.env.CLAUDE_LIMITLINE_LOG_FILE;
+// Debug logging configuration — env vars work immediately, config applied via initLogger()
+let DEBUG = process.env.CLAUDE_LIMITLINE_DEBUG === "true";
+let LOG_FILE = process.env.CLAUDE_LIMITLINE_LOG_FILE;
+
+/** Apply config-based logger settings. Env vars take priority. */
+export function initLogger(config: { debug?: boolean; logFile?: string }): void {
+  DEBUG = DEBUG || (config.debug === true);
+  LOG_FILE = LOG_FILE || config.logFile;
+}
 
 // Ensure log directory exists
 function ensureLogDir(logPath: string): void {

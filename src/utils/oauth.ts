@@ -86,7 +86,9 @@ function hydrateUsageResponse(raw: UsageResponse): UsageResponse {
 function recordBackoff(fileCache: FileCache | null, retryAfterMs?: number): void {
   const prev = fileCache?.backoff;
   const consecutive = (prev?.consecutive ?? 0) + 1;
-  const backoffMs = retryAfterMs ?? Math.min(60_000 * Math.pow(2, consecutive - 1), 300_000);
+  const exponentialMs = Math.min(60_000 * Math.pow(2, consecutive - 1), 300_000);
+  // Use whichever is larger: server's retry-after or our exponential backoff (min 60s)
+  const backoffMs = Math.max(retryAfterMs ?? 0, exponentialMs);
   const updated: FileCache = {
     ...fileCache,
     backoff: { until: Date.now() + backoffMs, consecutive },
