@@ -16,7 +16,11 @@
     "enabled": true,
     "displayStyle": "text",
     "barWidth": 10,
-    "showTimeRemaining": true
+    "showTimeRemaining": true,
+    "timeDisplay": "remaining",
+    "timeFormat": "12h",
+    "showSparkline": false,
+    "sparklineWidth": 8
   },
   "weekly": {
     "enabled": true,
@@ -39,7 +43,7 @@
     "backoffMax": 600
   },
   "segmentOrder": [
-    ["directory", "git"],
+    ["directory", "git", "sparkline"],
     ["model", "block", "weekly", "billing", "context"],
     ["sessionId"]
   ],

@@ -12,8 +12,15 @@ export interface GitSegmentConfig extends SimpleSegmentConfig {
   showDirtyIndicator?: boolean;  // Show ● when there are uncommitted changes
 }
 
+export type TimeDisplay = "remaining" | "absolute";
+export type TimeFormat = "12h" | "24h";
+
 export interface BlockSegmentConfig extends SegmentConfig {
   showTimeRemaining?: boolean;
+  timeDisplay?: TimeDisplay;    // "remaining" (3h20m) or "absolute" (2:30pm), default "remaining"
+  timeFormat?: TimeFormat;      // "12h" or "24h" for absolute time, default "12h"
+  showSparkline?: boolean;      // Show usage history sparkline, default false
+  sparklineWidth?: number;      // Number of sparkline characters, default 8
 }
 
 export type WeeklyViewMode = "simple" | "smart";
@@ -41,7 +48,7 @@ export interface DisplayConfig {
   compactWidth?: number;  // Terminal width threshold for compact mode (default 80)
 }
 
-export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId";
+export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId" | "sparkline";
 
 export interface BillingSegmentConfig extends SimpleSegmentConfig {
   warningThreshold?: number;   // Utilization % threshold for warning (default 70)
@@ -87,6 +94,10 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
     displayStyle: "text",
     barWidth: 10,
     showTimeRemaining: true,
+    timeDisplay: "remaining",
+    timeFormat: "12h",
+    showSparkline: false,
+    sparklineWidth: 8,
   },
   weekly: {
     enabled: true,
