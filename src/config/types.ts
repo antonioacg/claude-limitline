@@ -30,6 +30,8 @@ export interface BudgetConfig {
   resetMinute?: number;  // 0-59
   warningThreshold?: number; // percentage to show warning color (default 70)
   criticalThreshold?: number; // percentage to show critical color (default 90)
+  backoffBase?: number;  // initial backoff in seconds on 429 (default 60)
+  backoffMax?: number;   // maximum backoff in seconds on 429 (default 300)
 }
 
 export interface DisplayConfig {

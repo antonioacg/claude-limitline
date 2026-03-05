@@ -5,7 +5,7 @@ import { BlockProvider, WeeklyProvider, BillingProvider } from "./segments/index
 import { Renderer } from "./renderer.js";
 import { getEnvironmentInfo } from "./utils/environment.js";
 import { readHookData } from "./utils/claude-hook.js";
-import { getUsageTrend, getCurrentProvider } from "./utils/oauth.js";
+import { getUsageTrend, getCurrentProvider, initOAuth } from "./utils/oauth.js";
 import { debug, initLogger } from "./utils/logger.js";
 
 async function main(): Promise<void> {
@@ -13,6 +13,7 @@ async function main(): Promise<void> {
     // Load configuration
     const config = loadConfig();
     initLogger(config);
+    initOAuth(config.budget ?? {});
     debug("Config loaded:", JSON.stringify(config));
 
     // Read hook data from stdin (Claude Code passes this)
