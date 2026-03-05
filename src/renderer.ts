@@ -452,8 +452,8 @@ export class Renderer {
     // Color thresholds based on utilization (only when limit exists)
     let colors = this.theme.context;
     if (hasLimit && utilization != null) {
-      const critPct = this.config.billing?.utilizationCritical ?? 90;
-      const warnPct = this.config.billing?.utilizationWarning ?? 70;
+      const critPct = this.config.billing?.criticalThreshold ?? 90;
+      const warnPct = this.config.billing?.warningThreshold ?? 70;
       if (utilization >= critPct) {
         colors = this.theme.critical;
       } else if (utilization >= warnPct) {

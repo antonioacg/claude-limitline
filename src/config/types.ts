@@ -42,8 +42,8 @@ export interface DisplayConfig {
 export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing";
 
 export interface BillingSegmentConfig extends SimpleSegmentConfig {
-  utilizationWarning?: number;   // Utilization % threshold for warning (default 70)
-  utilizationCritical?: number;  // Utilization % threshold for critical (default 90)
+  warningThreshold?: number;   // Utilization % threshold for warning (default 70)
+  criticalThreshold?: number;  // Utilization % threshold for critical (default 90)
 }
 
 export interface LimitlineConfig {
