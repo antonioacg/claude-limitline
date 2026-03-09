@@ -3,16 +3,24 @@ import { getTheme, ansi, type ColorTheme, type SegmentColor } from "./themes/ind
 import { type LimitlineConfig, type SegmentName } from "./config/index.js";
 import { type BlockInfo } from "./segments/block.js";
 import { type WeeklyInfo } from "./segments/weekly.js";
+import { type BillingSegmentInfo } from "./segments/billing.js";
 import { type EnvironmentInfo } from "./utils/environment.js";
 import { type TrendInfo } from "./utils/oauth.js";
 import { getTerminalWidth } from "./utils/terminal.js";
 import { getBlockSparkline } from "./utils/history.js";
+import {
+  renderBillingSegment,
+  renderSparklineSegment,
+  renderSessionIdSegment,
+} from "./renderer-ext.js";
 
 interface SymbolSet {
   block: string;
   weekly: string;
   opus: string;
   sonnet: string;
+  billing: string;
+  autoReload: string;
   bottleneck: string;
   rightArrow: string;
   leftArrow: string;
@@ -34,6 +42,7 @@ interface Segment {
 interface RenderContext {
   blockInfo: BlockInfo | null;
   weeklyInfo: WeeklyInfo | null;
+  billingInfo: BillingSegmentInfo | null;
   envInfo: EnvironmentInfo;
   trendInfo: TrendInfo | null;
   compact: boolean;
@@ -58,6 +67,8 @@ export class Renderer {
       weekly: symbolSet.weekly_cost,
       opus: symbolSet.opus_cost,
       sonnet: symbolSet.sonnet_cost,
+      billing: symbolSet.billing,
+      autoReload: symbolSet.auto_reload,
       bottleneck: symbolSet.bottleneck,
       rightArrow: symbolSet.right,
       leftArrow: symbolSet.left,
@@ -92,13 +103,13 @@ export class Renderer {
   private formatTimeRemaining(minutes: number, compact: boolean): string {
     if (minutes >= 60) {
       const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
+      const mins = String(minutes % 60).padStart(2, '0');
       if (compact) {
-        return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+        return `${hours}h${mins}m`;
       }
-      return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+      return `${hours}h${mins}m`;
     }
-    return `${minutes}m`;
+    return `${String(minutes).padStart(2, '0')}m`;
   }
 
   private formatAbsoluteTime(resetAt: Date, format: "12h" | "24h"): string {
@@ -111,7 +122,6 @@ export class Renderer {
       return `${paddedHours}:${paddedMinutes}`;
     }
 
-    // 12-hour format
     const hour12 = hours % 12 || 12;
     const ampm = hours < 12 ? "am" : "pm";
     return `${hour12}:${paddedMinutes}${ampm}`;
@@ -125,11 +135,12 @@ export class Renderer {
   }
 
   private getColorsForPercent(percent: number, baseColors: SegmentColor): SegmentColor {
-    const threshold = this.config.budget?.warningThreshold ?? 80;
+    const warningThreshold = this.config.budget?.warningThreshold ?? 70;
+    const criticalThreshold = this.config.budget?.criticalThreshold ?? 90;
 
-    if (percent >= 100) {
+    if (percent >= criticalThreshold) {
       return this.theme.critical;
-    } else if (percent >= threshold) {
+    } else if (percent >= warningThreshold) {
       return this.theme.warning;
     }
     return baseColors;
@@ -147,36 +158,17 @@ export class Renderer {
       // Segment content with background and foreground
       output += ansi.bg(seg.colors.bg) + ansi.fg(seg.colors.fg) + seg.text;
 
-      // Powerline arrow
+      // Powerline arrow or separator
       output += RESET_CODE;
-      if (nextColors) {
-        // Arrow: current bg as fg, next bg as bg
-        output += ansi.fg(seg.colors.bg) + ansi.bg(nextColors.bg) + this.symbols.rightArrow;
-      } else {
-        // Final arrow to terminal background
-        output += ansi.fg(seg.colors.bg) + this.symbols.rightArrow;
+      if (this.symbols.rightArrow) {
+        if (nextColors) {
+          output += ansi.fg(seg.colors.bg) + ansi.bg(nextColors.bg) + this.symbols.rightArrow;
+        } else {
+          output += ansi.fg(seg.colors.bg) + this.symbols.rightArrow;
+        }
+      } else if (i < segments.length - 1) {
+        output += this.symbols.separator;
       }
-    }
-
-    output += RESET_CODE;
-    return output;
-  }
-
-  private renderRightPowerline(segments: Segment[]): string {
-    if (segments.length === 0) return "";
-
-    let output = "";
-
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-
-      // Left arrow first (pointing left like vim statuslines)
-      // Arrow color: segment bg as fg, previous segment bg (or terminal) as bg
-      output += RESET_CODE;
-      output += ansi.fg(seg.colors.bg) + this.symbols.leftArrow;
-
-      // Segment content with background and foreground
-      output += ansi.bg(seg.colors.bg) + ansi.fg(seg.colors.fg) + seg.text;
     }
 
     output += RESET_CODE;
@@ -199,7 +191,7 @@ export class Renderer {
       : ctx.envInfo.directory;
 
     return {
-      text: ` ${name} `,
+      text: `${name}`,
       colors: this.theme.directory,
     };
   }
@@ -209,7 +201,8 @@ export class Renderer {
       return null;
     }
 
-    const dirtyIndicator = ctx.envInfo.gitDirty ? " ●" : "";
+    const showDirty = this.config.git?.showDirtyIndicator ?? true;
+    const dirtyIndicator = (showDirty && ctx.envInfo.gitDirty) ? " ●" : "";
     const icon = this.usePowerline ? this.symbols.branch : "";
     const prefix = icon ? `${icon} ` : "";
 
@@ -219,7 +212,7 @@ export class Renderer {
     }
 
     return {
-      text: ` ${prefix}${branch}${dirtyIndicator} `,
+      text: `${prefix}${branch}${dirtyIndicator}`,
       colors: this.theme.git,
     };
   }
@@ -233,7 +226,7 @@ export class Renderer {
     const prefix = icon ? `${icon} ` : "";
 
     return {
-      text: ` ${prefix}${ctx.envInfo.model} `,
+      text: `${prefix}${ctx.envInfo.model}`,
       colors: this.theme.model,
     };
   }
@@ -247,7 +240,7 @@ export class Renderer {
 
     if (ctx.blockInfo.percentUsed === null) {
       return {
-        text: ` ${icon} -- `,
+        text: `${icon} --`,
         colors: this.theme.block,
       };
     }
@@ -274,7 +267,7 @@ export class Renderer {
     const showSparkline = this.config.block?.showSparkline ?? false;
     if (showSparkline && !ctx.compact) {
       const sparklineWidth = this.config.block?.sparklineWidth ?? 8;
-      const sparkline = getBlockSparkline(sparklineWidth);
+      const sparkline = getBlockSparkline(sparklineWidth, this.config.block?.sparklineRange);
       if (sparkline) {
         text += ` ${sparkline}`;
       }
@@ -287,15 +280,15 @@ export class Renderer {
 
       if (timeDisplay === "absolute" && ctx.blockInfo.resetAt) {
         const timeStr = this.formatAbsoluteTime(ctx.blockInfo.resetAt, timeFormat);
-        text += ` (${timeStr})`;
+        text += ` [${timeStr}]`;
       } else if (ctx.blockInfo.timeRemaining !== null) {
         const timeStr = this.formatTimeRemaining(ctx.blockInfo.timeRemaining, ctx.compact);
-        text += ` (${timeStr})`;
+        text += ` [${timeStr}]`;
       }
     }
 
     return {
-      text: ` ${icon} ${text} `,
+      text: `${icon} ${text}`,
       colors,
     };
   }
@@ -306,7 +299,7 @@ export class Renderer {
 
     if (info.percentUsed === null) {
       return {
-        text: ` ${icon} -- `,
+        text: `${icon} --`,
         colors: this.theme.weekly,
       };
     }
@@ -330,11 +323,11 @@ export class Renderer {
 
     // Add week progress if enabled (skip in compact mode)
     if (showWeekProgress && !ctx.compact) {
-      text += ` (wk ${info.weekProgressPercent}%)`;
+      text += ` [wk ${info.weekProgressPercent}%]`;
     }
 
     return {
-      text: ` ${icon} ${text} `,
+      text: `${icon} ${text}`,
       colors: this.theme.weekly,
     };
   }
@@ -354,10 +347,10 @@ export class Renderer {
       const sonnetTrend = this.getTrendSymbol(ctx.trendInfo?.sevenDaySonnetTrend ?? null);
       const overallTrend = this.getTrendSymbol(ctx.trendInfo?.sevenDayTrend ?? null);
 
-      let text = `${sonnetIcon}${Math.round(info.sonnetPercentUsed)}%${sonnetTrend} | ${overallIcon}${Math.round(info.percentUsed)}%${overallTrend}`;
+      let text = `${sonnetIcon} ${Math.round(info.sonnetPercentUsed)}%${sonnetTrend} | ${overallIcon} ${Math.round(info.percentUsed)}%${overallTrend}`;
 
       if (showWeekProgress && !ctx.compact) {
-        text += ` (wk ${info.weekProgressPercent}%)`;
+        text += ` [wk ${info.weekProgressPercent}%]`;
       }
 
       // Use warning/critical colors based on highest percentage
@@ -365,7 +358,7 @@ export class Renderer {
       const colors = this.getColorsForPercent(maxPercent, this.theme.weekly);
 
       return {
-        text: ` ${text} `,
+        text: `${text}`,
         colors,
       };
     }
@@ -373,22 +366,22 @@ export class Renderer {
     // For Opus, Haiku, or when no model-specific data: just show overall
     if (info.percentUsed === null) {
       return {
-        text: ` ${overallIcon} -- `,
+        text: `${overallIcon} --`,
         colors: this.theme.weekly,
       };
     }
 
     const trend = this.getTrendSymbol(ctx.trendInfo?.sevenDayTrend ?? null);
-    let text = `${overallIcon}${Math.round(info.percentUsed)}%${trend}`;
+    let text = `${overallIcon} ${Math.round(info.percentUsed)}%${trend}`;
 
     if (showWeekProgress && !ctx.compact) {
-      text += ` (wk ${info.weekProgressPercent}%)`;
+      text += ` [wk ${info.weekProgressPercent}%]`;
     }
 
     const colors = this.getColorsForPercent(info.percentUsed, this.theme.weekly);
 
     return {
-      text: ` ${text} `,
+      text: `${text}`,
       colors,
     };
   }
@@ -419,9 +412,31 @@ export class Renderer {
     const colors = this.getColorsForPercent(percent, this.theme.context);
 
     return {
-      text: ` ${icon} ${percent}% `,
+      text: `${icon} ${percent}%`,
       colors,
     };
+  }
+
+  // Extension segments — delegated to renderer-ext.ts to reduce upstream diff
+
+  private renderBilling(ctx: RenderContext): Segment | null {
+    if (!ctx.billingInfo) return null;
+    return renderBillingSegment(ctx.billingInfo, this.config.billing, this.theme) as Segment | null;
+  }
+
+  private renderSparkline(ctx: RenderContext): Segment | null {
+    return renderSparklineSegment(
+      this.config.block?.sparklineWidth ?? 8,
+      this.config.block?.sparklineRange,
+      ctx.blockInfo?.percentUsed ?? 0,
+      this.config.budget?.warningThreshold ?? 70,
+      this.config.budget?.criticalThreshold ?? 90,
+      this.theme,
+    ) as Segment | null;
+  }
+
+  private renderSessionId(ctx: RenderContext): Segment | null {
+    return renderSessionIdSegment(ctx.envInfo.sessionId, this.theme) as Segment | null;
   }
 
   private getSegment(name: SegmentName, ctx: RenderContext): Segment | null {
@@ -438,14 +453,30 @@ export class Renderer {
         return this.renderWeekly(ctx);
       case "context":
         return this.renderContext(ctx);
+      case "billing":
+        return this.renderBilling(ctx);
+      case "sessionId":
+        return this.renderSessionId(ctx);
+      case "sparkline":
+        return this.renderSparkline(ctx);
       default:
         return null;
     }
   }
 
+  private normalizeSegmentOrder(order: SegmentName[] | SegmentName[][]): SegmentName[][] {
+    if (order.length === 0) return [];
+    if (Array.isArray(order[0])) {
+      return order as SegmentName[][];
+    }
+    // Flat array = single line (backward compat)
+    return [order as SegmentName[]];
+  }
+
   render(
     blockInfo: BlockInfo | null,
     weeklyInfo: WeeklyInfo | null,
+    billingInfo: BillingSegmentInfo | null,
     envInfo: EnvironmentInfo,
     trendInfo: TrendInfo | null = null
   ): string {
@@ -453,48 +484,35 @@ export class Renderer {
     const ctx: RenderContext = {
       blockInfo,
       weeklyInfo,
+      billingInfo,
       envInfo,
       trendInfo,
       compact,
     };
 
-    // Build left segments (existing behavior)
-    const leftSegments: Segment[] = [];
-    const order = this.config.segmentOrder ?? ["directory", "git", "model", "block", "weekly"];
+    const defaultOrder: SegmentName[][] = [
+      ["directory", "git"],
+      ["model", "block", "weekly"],
+    ];
+    const lines = this.normalizeSegmentOrder(this.config.segmentOrder ?? defaultOrder);
 
-    for (const name of order) {
-      // Skip context - it goes on the right side
-      if (name === "context") continue;
-      const segment = this.getSegment(name, ctx);
-      if (segment) {
-        leftSegments.push(segment);
+    const renderedLines: string[] = [];
+
+    for (const lineOrder of lines) {
+      const segments: Segment[] = [];
+      for (const name of lineOrder) {
+        const segment = this.getSegment(name, ctx);
+        if (segment) segments.push(segment);
+      }
+      if (segments.length === 0) continue;
+
+      if (this.usePowerline) {
+        renderedLines.push(this.renderPowerline(segments));
+      } else {
+        renderedLines.push(this.renderFallback(segments));
       }
     }
 
-    // Build right segments (context with left arrows)
-    const rightSegments: Segment[] = [];
-    const contextSegment = this.renderContext(ctx);
-    if (contextSegment) {
-      rightSegments.push(contextSegment);
-    }
-
-    // Render both sides
-    let output = "";
-
-    if (this.usePowerline) {
-      if (leftSegments.length > 0) {
-        output += this.renderPowerline(leftSegments);
-      }
-      if (rightSegments.length > 0) {
-        output += this.renderRightPowerline(rightSegments);
-      }
-    } else {
-      const allSegments = [...leftSegments, ...rightSegments];
-      if (allSegments.length > 0) {
-        output = this.renderFallback(allSegments);
-      }
-    }
-
-    return output;
+    return renderedLines.join("\n");
   }
 }

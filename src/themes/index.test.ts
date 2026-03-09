@@ -77,7 +77,7 @@ describe("themes", () => {
     });
 
     it.each(allThemes)("%s theme colors are valid hex codes", (name, theme) => {
-      const hexRegex = /^#[0-9a-fA-F]{6}$/;
+      const hexRegex = /^(#[0-9a-fA-F]{6}|transparent)$/;
       const segments = ["directory", "git", "model", "block", "weekly", "warning", "critical"];
       for (const segment of segments) {
         const colors = theme[segment as keyof typeof theme];

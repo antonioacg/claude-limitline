@@ -26,7 +26,6 @@ describe("history utilities", () => {
       const sparkline = getSparkline(samples, 5);
 
       expect(sparkline).toHaveLength(5);
-      // First char should be lowest (0%), last should be highest (100%)
       expect(sparkline[0]).toBe("▁");
       expect(sparkline[4]).toBe("█");
     });
@@ -52,18 +51,16 @@ describe("history utilities", () => {
       const samples = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
       const sparkline = getSparkline(samples, 5);
 
-      // Should only take the last 5 samples
       expect(sparkline).toHaveLength(5);
     });
 
     it("handles values at boundaries correctly", () => {
-      // Test edge cases: 0, 50, 100
       const samples = [0, 50, 100];
       const sparkline = getSparkline(samples, 3);
 
-      expect(sparkline[0]).toBe("▁"); // 0%
-      expect(sparkline[1]).toBe("▄"); // 50% -> index 3
-      expect(sparkline[2]).toBe("█"); // 100% -> index 7
+      expect(sparkline[0]).toBe("▁");
+      expect(sparkline[1]).toBe("▄");
+      expect(sparkline[2]).toBe("█");
     });
 
     it("clamps values over 100", () => {
@@ -84,8 +81,8 @@ describe("history utilities", () => {
   describe("pruneOldSamples", () => {
     it("removes samples older than 24 hours", () => {
       const now = Date.now();
-      const oldTimestamp = now - 25 * 60 * 60 * 1000; // 25 hours ago
-      const recentTimestamp = now - 1 * 60 * 60 * 1000; // 1 hour ago
+      const oldTimestamp = now - 25 * 60 * 60 * 1000;
+      const recentTimestamp = now - 1 * 60 * 60 * 1000;
 
       const data: HistoryData = {
         samples: [

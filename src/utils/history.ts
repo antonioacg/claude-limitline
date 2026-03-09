@@ -14,7 +14,15 @@ export interface HistoryData {
 }
 
 const SPARKLINE_CHARS = "▁▂▃▄▅▆▇█";
-const MAX_HISTORY_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+let maxHistoryAgeMs = 24 * 60 * 60 * 1000; // 24 hours default
+
+/** Set the max history retention. Call once after config loads. */
+export function initHistory(config: { sparklineRange?: number }): void {
+  if (config.sparklineRange != null) {
+    // Keep at least 2x the range so we always have enough data
+    maxHistoryAgeMs = Math.max(config.sparklineRange * 60 * 1000 * 2, 60 * 60 * 1000);
+  }
+}
 const HISTORY_FILE = "limitline-history.json";
 
 function getHistoryPath(): string {
@@ -38,7 +46,6 @@ export function loadHistory(): HistoryData {
 export function saveHistory(data: HistoryData): void {
   const historyPath = getHistoryPath();
   try {
-    // Ensure directory exists
     const dir = path.dirname(historyPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -50,7 +57,7 @@ export function saveHistory(data: HistoryData): void {
 }
 
 export function pruneOldSamples(data: HistoryData): HistoryData {
-  const cutoff = Date.now() - MAX_HISTORY_AGE_MS;
+  const cutoff = Date.now() - maxHistoryAgeMs;
   return {
     samples: data.samples.filter(s => s.timestamp > cutoff),
   };
@@ -61,15 +68,11 @@ export function addSample(
   weeklyPercent: number | null
 ): void {
   const history = loadHistory();
-
-  // Add new sample
   history.samples.push({
     timestamp: Date.now(),
     blockPercent,
     weeklyPercent,
   });
-
-  // Prune old samples and save
   const pruned = pruneOldSamples(history);
   saveHistory(pruned);
 }
@@ -78,17 +81,10 @@ export function getSparkline(
   samples: (number | null)[],
   width: number
 ): string {
-  // Filter out nulls and get the last 'width' samples
   const validSamples = samples.filter((s): s is number => s !== null);
+  if (validSamples.length === 0) return "";
 
-  if (validSamples.length === 0) {
-    return "";
-  }
-
-  // Take the last 'width' samples
   const recentSamples = validSamples.slice(-width);
-
-  // Map each value to a sparkline character (0-100 -> 0-7)
   return recentSamples
     .map(value => {
       const clamped = Math.max(0, Math.min(100, value));
@@ -98,8 +94,56 @@ export function getSparkline(
     .join("");
 }
 
-export function getBlockSparkline(width: number): string {
+/**
+ * Get a downsampled sparkline for a given time range.
+ * Divides the range into `width` time buckets and averages samples per bucket.
+ */
+function getDownsampledSparkline(
+  samples: UsageSample[],
+  extractor: (s: UsageSample) => number | null,
+  width: number,
+  rangeMinutes: number,
+): string {
+  const now = Date.now();
+  const rangeMs = rangeMinutes * 60 * 1000;
+  const startTime = now - rangeMs;
+  const bucketMs = rangeMs / width;
+
+  const buckets: number[][] = Array.from({ length: width }, () => []);
+
+  for (const sample of samples) {
+    if (sample.timestamp < startTime) continue;
+    const value = extractor(sample);
+    if (value === null) continue;
+    const bucketIdx = Math.min(
+      Math.floor((sample.timestamp - startTime) / bucketMs),
+      width - 1,
+    );
+    buckets[bucketIdx].push(value);
+  }
+
+  // Average each bucket; skip rendering if no data at all
+  const averaged: (number | null)[] = buckets.map(
+    b => b.length > 0 ? b.reduce((a, v) => a + v, 0) / b.length : null,
+  );
+
+  if (averaged.every(v => v === null)) return "";
+
+  return averaged
+    .map(value => {
+      if (value === null) return SPARKLINE_CHARS[0]; // empty bucket = lowest bar
+      const clamped = Math.max(0, Math.min(100, value));
+      const index = Math.floor((clamped / 100) * 7);
+      return SPARKLINE_CHARS[index];
+    })
+    .join("");
+}
+
+export function getBlockSparkline(width: number, rangeMinutes?: number): string {
   const history = loadHistory();
+  if (rangeMinutes != null) {
+    return getDownsampledSparkline(history.samples, s => s.blockPercent, width, rangeMinutes);
+  }
   const blockSamples = history.samples.map(s => s.blockPercent);
   return getSparkline(blockSamples, width);
 }

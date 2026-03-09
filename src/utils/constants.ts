@@ -1,14 +1,16 @@
 // Powerline symbols
 export const SYMBOLS = {
-  right: "\ue0b0",
-  left: "\ue0b2",
+  right: "",
+  left: "",
   branch: "\ue0a0",
-  separator: "\ue0b1",
+  separator: " ",
   model: "\u2731",           // Heavy asterisk ✱
   block_cost: "\u25eb",      // White square with vertical bisecting line ◫
   weekly_cost: "\u25cb",     // Circle ○
   opus_cost: "\u25c8",       // Diamond with dot ◈
   sonnet_cost: "\u25c7",     // White diamond ◇
+  billing: "\u0024",         // Dollar sign $ (or \u20ac for €)
+  auto_reload: "\u21bb",     // Clockwise open circle arrow ↻
   bottleneck: "\u25b2",      // Black up-pointing triangle ▲
   progress_full: "\u2588",   // Full block
   progress_empty: "\u2591",  // Light shade
@@ -24,6 +26,8 @@ export const TEXT_SYMBOLS = {
   weekly_cost: "WK",
   opus_cost: "Op",
   sonnet_cost: "So",
+  billing: "$",
+  auto_reload: "AR",
   bottleneck: "*",
   progress_full: "#",
   progress_empty: "-",

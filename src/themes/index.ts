@@ -14,6 +14,7 @@ export interface ColorTheme {
   opus: SegmentColor;       // Opus-specific weekly usage
   sonnet: SegmentColor;     // Sonnet-specific weekly usage
   context: SegmentColor;    // Context window usage
+  billing: SegmentColor;    // Billing/spend info
   warning: SegmentColor;    // Warning state (near limit)
   critical: SegmentColor;   // Critical state (at/over limit)
 }
@@ -41,8 +42,8 @@ function hexToAnsi256(hex: string): number {
 
 // ANSI escape code generators
 export const ansi = {
-  fg: (hex: string) => `\x1b[38;5;${hexToAnsi256(hex)}m`,
-  bg: (hex: string) => `\x1b[48;5;${hexToAnsi256(hex)}m`,
+  fg: (hex: string) => hex === "transparent" ? "" : `\x1b[38;5;${hexToAnsi256(hex)}m`,
+  bg: (hex: string) => hex === "transparent" ? "" : `\x1b[48;5;${hexToAnsi256(hex)}m`,
   fgRaw: (n: number) => `\x1b[38;5;${n}m`,
   bgRaw: (n: number) => `\x1b[48;5;${n}m`,
   reset: '\x1b[0m',
@@ -63,6 +64,7 @@ export const darkTheme: ColorTheme = {
   opus: { bg: "#1a1a1a", fg: "#c792ea" },      // Purple for Opus
   sonnet: { bg: "#1a1a1a", fg: "#89ddff" },    // Light blue for Sonnet
   context: { bg: "#2a2a2a", fg: "#87ceeb" },   // Sky blue for context
+  billing: { bg: "#3d3d00", fg: "#ffd700" },   // Gold for billing
   warning: { bg: "#d75f00", fg: "#ffffff" },
   critical: { bg: "#af0000", fg: "#ffffff" },
 };
@@ -77,6 +79,7 @@ export const lightTheme: ColorTheme = {
   opus: { bg: "#8b5cf6", fg: "#ffffff" },      // Purple for Opus
   sonnet: { bg: "#0ea5e9", fg: "#ffffff" },    // Sky blue for Sonnet
   context: { bg: "#6366f1", fg: "#ffffff" },   // Indigo for context
+  billing: { bg: "#f59e0b", fg: "#ffffff" },   // Amber for billing
   warning: { bg: "#f59e0b", fg: "#000000" },
   critical: { bg: "#ef4444", fg: "#ffffff" },
 };
@@ -91,6 +94,7 @@ export const nordTheme: ColorTheme = {
   opus: { bg: "#2e3440", fg: "#b48ead" },      // Nord purple for Opus
   sonnet: { bg: "#2e3440", fg: "#88c0d0" },    // Nord frost for Sonnet
   context: { bg: "#3b4252", fg: "#81a1c1" },   // Nord frost for context
+  billing: { bg: "#3b4252", fg: "#ebcb8b" },   // Nord yellow for billing
   warning: { bg: "#d08770", fg: "#2e3440" },
   critical: { bg: "#bf616a", fg: "#eceff4" },
 };
@@ -105,6 +109,7 @@ export const gruvboxTheme: ColorTheme = {
   opus: { bg: "#282828", fg: "#d3869b" },      // Gruvbox purple for Opus
   sonnet: { bg: "#282828", fg: "#8ec07c" },    // Gruvbox aqua for Sonnet
   context: { bg: "#3c3836", fg: "#83a598" },   // Gruvbox blue for context
+  billing: { bg: "#3c3836", fg: "#fabd2f" },   // Gruvbox yellow for billing
   warning: { bg: "#d79921", fg: "#282828" },
   critical: { bg: "#cc241d", fg: "#ebdbb2" },
 };
@@ -119,6 +124,7 @@ export const tokyoNightTheme: ColorTheme = {
   opus: { bg: "#1a202c", fg: "#bb9af7" },      // Tokyo purple for Opus
   sonnet: { bg: "#1a202c", fg: "#7dcfff" },    // Tokyo cyan for Sonnet
   context: { bg: "#2d3748", fg: "#7aa2f7" },   // Tokyo blue for context
+  billing: { bg: "#1a202c", fg: "#e0af68" },   // Tokyo yellow for billing
   warning: { bg: "#e0af68", fg: "#1a1b26" },
   critical: { bg: "#f7768e", fg: "#1a1b26" },
 };
@@ -133,8 +139,24 @@ export const rosePineTheme: ColorTheme = {
   opus: { bg: "#232136", fg: "#c4a7e7" },      // Rose Pine iris for Opus
   sonnet: { bg: "#232136", fg: "#31748f" },    // Rose Pine pine for Sonnet
   context: { bg: "#2a273f", fg: "#9ccfd8" },   // Rose Pine foam for context
+  billing: { bg: "#232136", fg: "#f6c177" },   // Rose Pine gold for billing
   warning: { bg: "#f6c177", fg: "#191724" },
   critical: { bg: "#eb6f92", fg: "#191724" },
+};
+
+// Tokyo Night Day theme (light variant with transparent backgrounds)
+export const tokyoNightDayTheme: ColorTheme = {
+  directory: { bg: "transparent", fg: "#9854f1" },
+  git: { bg: "transparent", fg: "#587539" },
+  model: { bg: "transparent", fg: "#6366f1" },
+  block: { bg: "transparent", fg: "#0891b2" },
+  weekly: { bg: "transparent", fg: "#059669" },
+  opus: { bg: "transparent", fg: "#7c3aed" },
+  sonnet: { bg: "transparent", fg: "#0891b2" },
+  context: { bg: "transparent", fg: "#6366f1" },
+  billing: { bg: "transparent", fg: "#d97706" },  // Amber for billing
+  warning: { bg: "transparent", fg: "#d97706" },
+  critical: { bg: "transparent", fg: "#dc2626" },
 };
 
 // All themes
@@ -144,6 +166,7 @@ export const themes: Record<string, ColorTheme> = {
   nord: nordTheme,
   gruvbox: gruvboxTheme,
   "tokyo-night": tokyoNightTheme,
+  "tokyo-night-day": tokyoNightDayTheme,
   "rose-pine": rosePineTheme,
 };
 

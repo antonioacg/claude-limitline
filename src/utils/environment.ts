@@ -8,7 +8,10 @@ import { type ClaudeHookData, formatModelName } from "./claude-hook.js";
  */
 export function getDirectoryName(hookData?: ClaudeHookData | null): string | null {
   try {
-    // Use workspace from hook data if available
+    // Use workspace from hook data if available - prefer current_dir over project_dir
+    if (hookData?.workspace?.current_dir) {
+      return basename(hookData.workspace.current_dir);
+    }
     if (hookData?.workspace?.project_dir) {
       return basename(hookData.workspace.project_dir);
     }
@@ -25,11 +28,12 @@ export function getDirectoryName(hookData?: ClaudeHookData | null): string | nul
 /**
  * Get the current git branch name
  */
-export function getGitBranch(): string | null {
+export function getGitBranch(cwd?: string): string | null {
   try {
     const branch = execSync("git rev-parse --abbrev-ref HEAD", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      cwd: cwd || process.cwd(),
     }).trim();
     return branch || null;
   } catch (error) {
@@ -41,11 +45,12 @@ export function getGitBranch(): string | null {
 /**
  * Check if the git repo has uncommitted changes
  */
-export function hasGitChanges(): boolean {
+export function hasGitChanges(cwd?: string): boolean {
   try {
     const status = execSync("git status --porcelain", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      cwd: cwd || process.cwd(),
     }).trim();
     return status.length > 0;
   } catch (error) {
@@ -81,6 +86,7 @@ export interface EnvironmentInfo {
   gitDirty: boolean;
   model: string | null;
   contextPercent: number;
+  sessionId: string | null;
 }
 
 /**
@@ -105,11 +111,14 @@ export function getContextPercent(hookData?: ClaudeHookData | null): number {
  * Get all environment info at once
  */
 export function getEnvironmentInfo(hookData?: ClaudeHookData | null): EnvironmentInfo {
+  const cwd = hookData?.workspace?.current_dir || hookData?.workspace?.project_dir || hookData?.cwd;
+  debug("Git cwd:", cwd);
   return {
     directory: getDirectoryName(hookData),
-    gitBranch: getGitBranch(),
-    gitDirty: hasGitChanges(),
+    gitBranch: cwd ? getGitBranch(cwd) : null,
+    gitDirty: cwd ? hasGitChanges(cwd) : false,
     model: getClaudeModel(hookData),
     contextPercent: getContextPercent(hookData),
+    sessionId: hookData?.session_id ?? null,
   };
 }

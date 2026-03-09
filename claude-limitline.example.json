@@ -1,0 +1,55 @@
+{
+  "theme": "dark",
+  "display": {
+    "style": "powerline",
+    "useNerdFonts": true,
+    "compactMode": "auto",
+    "compactWidth": 80
+  },
+  "directory": { "enabled": true },
+  "git": {
+    "enabled": true,
+    "showDirtyIndicator": false
+  },
+  "model": { "enabled": true },
+  "block": {
+    "enabled": true,
+    "displayStyle": "text",
+    "barWidth": 10,
+    "showTimeRemaining": true,
+    "timeDisplay": "remaining",
+    "timeFormat": "12h",
+    "showSparkline": false,
+    "sparklineWidth": 8,
+    "sparklineRange": 360
+  },
+  "weekly": {
+    "enabled": true,
+    "displayStyle": "text",
+    "barWidth": 10,
+    "showWeekProgress": true,
+    "viewMode": "simple"
+  },
+  "context": { "enabled": true },
+  "billing": {
+    "enabled": false,
+    "warningThreshold": 70,
+    "criticalThreshold": 90,
+    "currency": "USD"
+  },
+  "budget": {
+    "pollInterval": 15,
+    "warningThreshold": 70,
+    "criticalThreshold": 90,
+    "backoffBase": 120,
+    "backoffMax": 600
+  },
+  "segmentOrder": [
+    ["directory", "git", "sparkline"],
+    ["model", "block", "weekly", "billing", "context"],
+    ["sessionId"]
+  ],
+  "showTrend": true,
+  "debug": false,
+  "logFile": "/tmp/limitline.log"
+}
