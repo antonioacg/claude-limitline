@@ -1,42 +1,38 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  fetchUsageFromAPI,
   getUsageTrend,
   getRealtimeUsage,
   clearUsageCache,
-  getOAuthToken,
+  clearBillingCache,
+  clearFileCache,
+  getCurrentProvider,
+  clearProviderCache,
 } from "./oauth.js";
+import { AnthropicProvider } from "../providers/anthropic.js";
+import { MoonshotProvider } from "../providers/moonshot.js";
+import { setProvider } from "../providers/index.js";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-// Mock fs and child_process
-vi.mock("node:fs", () => ({
-  default: {
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-  },
-}));
-
-vi.mock("node:child_process", () => ({
-  exec: vi.fn(),
-}));
-
-import fs from "node:fs";
-import { exec } from "node:child_process";
-
 describe("oauth utilities", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     clearUsageCache();
+    clearBillingCache();
+    clearFileCache();
+    clearProviderCache();
+    delete process.env.ANTHROPIC_BASE_URL;
+    delete process.env.ANTHROPIC_AUTH_TOKEN;
+    delete process.env.MOONSHOT_API_KEY;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe("fetchUsageFromAPI", () => {
+  describe("getRealtimeUsage", () => {
     it("returns parsed usage data on success", async () => {
       const mockResponse = {
         five_hour: {
@@ -54,7 +50,12 @@ describe("oauth utilities", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      // Create a mock Anthropic provider that returns a test token
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result).not.toBeNull();
       expect(result?.fiveHour?.percentUsed).toBe(45.5);
@@ -72,7 +73,11 @@ describe("oauth utilities", () => {
           }),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result?.fiveHour?.isOverLimit).toBe(true);
       expect(result?.sevenDay?.isOverLimit).toBe(true);
@@ -85,7 +90,11 @@ describe("oauth utilities", () => {
         statusText: "Unauthorized",
       });
 
-      const result = await fetchUsageFromAPI("invalid-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result).toBeNull();
     });
@@ -93,7 +102,11 @@ describe("oauth utilities", () => {
     it("returns null when fetch throws", async () => {
       mockFetch.mockRejectedValue(new Error("Network error"));
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result).toBeNull();
     });
@@ -107,7 +120,11 @@ describe("oauth utilities", () => {
           }),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result?.fiveHour).toBeNull();
       expect(result?.sevenDay?.percentUsed).toBe(50);
@@ -122,7 +139,11 @@ describe("oauth utilities", () => {
           }),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result?.fiveHour?.percentUsed).toBe(25);
       expect(result?.sevenDay).toBeNull();
@@ -141,7 +162,11 @@ describe("oauth utilities", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      const result = await getRealtimeUsage();
 
       expect(result?.sevenDayOpus?.percentUsed).toBe(15.0);
       expect(result?.sevenDaySonnet).toBeNull();
@@ -149,10 +174,10 @@ describe("oauth utilities", () => {
 
     it("parses seven_day_sonnet when present", async () => {
       const mockResponse = {
-        five_hour: { utilization: 29.0, resets_at: "2025-01-15T12:00:00Z" },
-        seven_day: { utilization: 47.0, resets_at: "2025-01-20T00:00:00Z" },
+        five_hour: { utilization: 29.0 },
+        seven_day: { utilization: 47.0 },
         seven_day_opus: null,
-        seven_day_sonnet: { utilization: 7.0, resets_at: "2025-01-20T00:00:00Z" },
+        seven_day_sonnet: { utilization: 85.0, resets_at: "2025-01-20T00:00:00Z" },
       };
 
       mockFetch.mockResolvedValue({
@@ -160,18 +185,22 @@ describe("oauth utilities", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
 
+      const result = await getRealtimeUsage();
+
+      expect(result?.sevenDaySonnet?.percentUsed).toBe(85.0);
       expect(result?.sevenDayOpus).toBeNull();
-      expect(result?.sevenDaySonnet?.percentUsed).toBe(7.0);
     });
 
     it("parses all model-specific limits when present", async () => {
       const mockResponse = {
-        five_hour: { utilization: 29.0, resets_at: "2025-01-15T12:00:00Z" },
-        seven_day: { utilization: 47.0, resets_at: "2025-01-20T00:00:00Z" },
-        seven_day_opus: { utilization: 15.0, resets_at: "2025-01-20T00:00:00Z" },
-        seven_day_sonnet: { utilization: 7.0, resets_at: "2025-01-20T00:00:00Z" },
+        five_hour: { utilization: 50.0 },
+        seven_day: { utilization: 60.0 },
+        seven_day_opus: { utilization: 30.0 },
+        seven_day_sonnet: { utilization: 70.0 },
       };
 
       mockFetch.mockResolvedValue({
@@ -179,27 +208,37 @@ describe("oauth utilities", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await fetchUsageFromAPI("test-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
 
-      expect(result?.sevenDay?.percentUsed).toBe(47.0);
-      expect(result?.sevenDayOpus?.percentUsed).toBe(15.0);
-      expect(result?.sevenDaySonnet?.percentUsed).toBe(7.0);
+      const result = await getRealtimeUsage();
+
+      expect(result?.fiveHour?.percentUsed).toBe(50.0);
+      expect(result?.sevenDay?.percentUsed).toBe(60.0);
+      expect(result?.sevenDayOpus?.percentUsed).toBe(30.0);
+      expect(result?.sevenDaySonnet?.percentUsed).toBe(70.0);
     });
 
     it("sends correct headers", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({}),
+        json: () => Promise.resolve({ five_hour: { utilization: 50 } }),
       });
 
-      await fetchUsageFromAPI("my-token");
+      const mockProvider = new AnthropicProvider();
+      vi.spyOn(mockProvider, "getToken").mockResolvedValue("sk-ant-oat-test-token");
+      setProvider(mockProvider);
+
+      await getRealtimeUsage();
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://api.anthropic.com/api/oauth/usage",
         expect.objectContaining({
           method: "GET",
           headers: expect.objectContaining({
-            Authorization: "Bearer my-token",
+            "Content-Type": "application/json",
+            Authorization: "Bearer sk-ant-oat-test-token",
             "anthropic-beta": "oauth-2025-04-20",
           }),
         })
@@ -209,160 +248,65 @@ describe("oauth utilities", () => {
 
   describe("getUsageTrend", () => {
     it("returns null trends when no cached data", () => {
-      clearUsageCache();
-      const trend = getUsageTrend();
+      const trends = getUsageTrend();
 
-      expect(trend.fiveHourTrend).toBeNull();
-      expect(trend.sevenDayTrend).toBeNull();
-      expect(trend.sevenDayOpusTrend).toBeNull();
-      expect(trend.sevenDaySonnetTrend).toBeNull();
+      expect(trends.fiveHourTrend).toBeNull();
+      expect(trends.sevenDayTrend).toBeNull();
+      expect(trends.sevenDayOpusTrend).toBeNull();
+      expect(trends.sevenDaySonnetTrend).toBeNull();
     });
 
-    // Note: Testing trends with actual API calls requires integration tests
-    // The trend comparison depends on module-level state (cachedUsage, previousUsage)
-    // that persists between calls. The getRealtimeUsage function also calls
-    // platform-specific code that is difficult to mock without complex setup.
-  });
-
-  describe("clearUsageCache", () => {
     it("is a function that can be called", () => {
-      // clearUsageCache resets internal module state
-      // We can't easily test the effect without integration tests
-      expect(() => clearUsageCache()).not.toThrow();
+      expect(typeof getUsageTrend).toBe("function");
     });
   });
 
-  describe("getOAuthToken", () => {
-    it("returns null for unsupported platform", async () => {
-      const originalPlatform = process.platform;
-      Object.defineProperty(process, "platform", { value: "freebsd" });
+  describe("provider detection", () => {
+    it("detects Moonshot provider from ANTHROPIC_BASE_URL", async () => {
+      process.env.ANTHROPIC_BASE_URL = "https://api.moonshot.ai/anthropic";
 
-      const token = await getOAuthToken();
+      const provider = await getCurrentProvider();
 
-      expect(token).toBeNull();
-
-      Object.defineProperty(process, "platform", { value: originalPlatform });
+      expect(provider).toBeInstanceOf(MoonshotProvider);
+      expect(provider?.name).toBe("Moonshot");
     });
 
-    describe("macOS", () => {
-      const originalPlatform = process.platform;
+    it("detects Anthropic provider from token format", async () => {
+      process.env.ANTHROPIC_AUTH_TOKEN = "sk-ant-oat-test-token";
 
-      beforeEach(() => {
-        Object.defineProperty(process, "platform", { value: "darwin" });
-      });
+      const provider = await getCurrentProvider();
 
-      afterEach(() => {
-        Object.defineProperty(process, "platform", { value: originalPlatform });
-      });
+      expect(provider).toBeInstanceOf(AnthropicProvider);
+      expect(provider?.name).toBe("Anthropic");
+    });
 
-      it("parses JSON credentials from keychain with claudeAiOauth structure", async () => {
-        const mockCredentials = JSON.stringify({
-          claudeAiOauth: {
-            accessToken: "sk-ant-oat-test-token-12345",
-          },
-        });
+    it("detects Moonshot provider from non-Anthropic token format", async () => {
+      process.env.ANTHROPIC_AUTH_TOKEN = "sk-YccH8MN0GYfiC8ChlyD3riEYLpQKfCFCg9GGa3lU8KALwYXi";
 
-        vi.mocked(exec).mockImplementation(((cmd: string, opts: unknown, callback?: (error: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          // Handle both (cmd, callback) and (cmd, opts, callback) signatures
-          const cb = typeof opts === "function" ? opts : callback;
-          if (cb) {
-            cb(null, { stdout: mockCredentials, stderr: "" });
-          }
-          return {} as ReturnType<typeof exec>;
-        }) as typeof exec);
+      const provider = await getCurrentProvider();
 
-        const token = await getOAuthToken();
+      expect(provider).toBeInstanceOf(MoonshotProvider);
+      expect(provider?.name).toBe("Moonshot");
+    });
 
-        expect(token).toBe("sk-ant-oat-test-token-12345");
-      });
+    it("defaults to Anthropic when no indicators present", async () => {
+      const provider = await getCurrentProvider();
 
-      it("falls back to raw token if keychain returns non-JSON", async () => {
-        const rawToken = "sk-ant-oat-raw-token-67890";
+      expect(provider).toBeInstanceOf(AnthropicProvider);
+      expect(provider?.name).toBe("Anthropic");
+    });
+  });
 
-        vi.mocked(exec).mockImplementation(((cmd: string, opts: unknown, callback?: (error: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          const cb = typeof opts === "function" ? opts : callback;
-          if (cb) {
-            cb(null, { stdout: rawToken, stderr: "" });
-          }
-          return {} as ReturnType<typeof exec>;
-        }) as typeof exec);
+  describe("Moonshot provider", () => {
+    beforeEach(() => {
+      process.env.ANTHROPIC_BASE_URL = "https://api.moonshot.ai/anthropic";
+    });
 
-        const token = await getOAuthToken();
+    it("returns null for usage when using Moonshot provider", async () => {
+      const result = await getRealtimeUsage();
 
-        expect(token).toBe("sk-ant-oat-raw-token-67890");
-      });
-
-      it("returns null when keychain retrieval fails", async () => {
-        vi.mocked(exec).mockImplementation(((cmd: string, opts: unknown, callback?: (error: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          const cb = typeof opts === "function" ? opts : callback;
-          if (cb) {
-            cb(new Error("keychain error"), { stdout: "", stderr: "" });
-          }
-          return {} as ReturnType<typeof exec>;
-        }) as typeof exec);
-
-        const token = await getOAuthToken();
-
-        expect(token).toBeNull();
-      });
-
-      it("returns null when JSON is valid but missing accessToken", async () => {
-        const mockCredentials = JSON.stringify({
-          claudeAiOauth: {
-            refreshToken: "some-refresh-token",
-          },
-        });
-
-        vi.mocked(exec).mockImplementation(((cmd: string, opts: unknown, callback?: (error: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          const cb = typeof opts === "function" ? opts : callback;
-          if (cb) {
-            cb(null, { stdout: mockCredentials, stderr: "" });
-          }
-          return {} as ReturnType<typeof exec>;
-        }) as typeof exec);
-
-        const token = await getOAuthToken();
-
-        expect(token).toBeNull();
-      });
-
-      it("returns null when token doesn't start with sk-ant-oat", async () => {
-        const mockCredentials = JSON.stringify({
-          claudeAiOauth: {
-            accessToken: "invalid-token-format",
-          },
-        });
-
-        vi.mocked(exec).mockImplementation(((cmd: string, opts: unknown, callback?: (error: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          const cb = typeof opts === "function" ? opts : callback;
-          if (cb) {
-            cb(null, { stdout: mockCredentials, stderr: "" });
-          }
-          return {} as ReturnType<typeof exec>;
-        }) as typeof exec);
-
-        const token = await getOAuthToken();
-
-        expect(token).toBeNull();
-      });
-
-      it("uses correct keychain service name", async () => {
-        vi.mocked(exec).mockImplementation(((cmd: string, opts: unknown, callback?: (error: Error | null, result: { stdout: string; stderr: string }) => void) => {
-          const cb = typeof opts === "function" ? opts : callback;
-          if (cb) {
-            cb(new Error("not found"), { stdout: "", stderr: "" });
-          }
-          return {} as ReturnType<typeof exec>;
-        }) as typeof exec);
-
-        await getOAuthToken();
-
-        expect(exec).toHaveBeenCalledWith(
-          expect.stringContaining("Claude Code-credentials"),
-          expect.anything(),
-          expect.anything()
-        );
-      });
+      // Moonshot doesn't support usage via Anthropic-compatible API
+      expect(result).toBeNull();
     });
   });
 });
