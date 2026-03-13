@@ -11,6 +11,7 @@ export interface UsageSample {
 
 export interface HistoryData {
   samples: UsageSample[];
+  lastResetAtMs?: number | null;
 }
 
 const SPARKLINE_CHARS = "▁▂▃▄▅▆▇█";
@@ -94,42 +95,98 @@ export function getSparkline(
     .join("");
 }
 
+const BLOCK_DURATION_MS = 5 * 60 * 60 * 1000; // 5h billing block
+
+/**
+ * Build bucket boundaries aligned to a grid anchored at `resetAtMs`,
+ * with a forced break at the previous block boundary (`resetAtMs - 5h`).
+ * Returns `width` intervals as [start, end) pairs, rightmost = newest.
+ */
+function buildAlignedBuckets(
+  width: number,
+  rangeMinutes: number,
+  resetAtMs: number | null,
+): Array<{ start: number; end: number }> {
+  const now = Date.now();
+  const bucketMs = (rangeMinutes / width) * 60 * 1000;
+
+  // Fallback: no resetAt → uniform buckets (old behavior)
+  if (resetAtMs == null) {
+    const rangeMs = rangeMinutes * 60 * 1000;
+    const startTime = now - rangeMs;
+    return Array.from({ length: width }, (_, i) => ({
+      start: startTime + i * bucketMs,
+      end: startTime + (i + 1) * bucketMs,
+    }));
+  }
+
+  // Build grid boundaries anchored to resetAt, plus the block boundary
+  const blockBoundary = resetAtMs - BLOCK_DURATION_MS;
+
+  // Find gridNow: latest grid point ≤ now
+  // Grid points: resetAt + k * bucketMs for integer k
+  const k = Math.floor((now - resetAtMs) / bucketMs);
+  const gridNow = resetAtMs + k * bucketMs;
+
+  // Collect grid boundaries going left from gridNow, well past our range
+  const boundaries: number[] = [];
+  for (let i = -(width + 2); i <= 0; i++) {
+    boundaries.push(gridNow + i * bucketMs);
+  }
+  // Add now and the block boundary
+  boundaries.push(now);
+  boundaries.push(blockBoundary);
+
+  // Deduplicate, sort ascending
+  const unique = [...new Set(boundaries)].sort((a, b) => a - b);
+
+  // Build intervals between consecutive boundaries
+  const intervals: Array<{ start: number; end: number }> = [];
+  for (let i = 0; i < unique.length - 1; i++) {
+    if (unique[i + 1] <= unique[i]) continue;
+    // Only keep intervals that overlap with [something, now]
+    if (unique[i + 1] <= unique[0] || unique[i] >= now) continue;
+    intervals.push({ start: unique[i], end: unique[i + 1] });
+  }
+
+  // Take the rightmost `width` intervals (newest on the right)
+  return intervals.slice(-width);
+}
+
 /**
  * Get a downsampled sparkline for a given time range.
- * Divides the range into `width` time buckets and averages samples per bucket.
+ * Buckets are aligned to resetAt grid with a forced break at block boundaries.
  */
 function getDownsampledSparkline(
   samples: UsageSample[],
   extractor: (s: UsageSample) => number | null,
   width: number,
   rangeMinutes: number,
+  resetAtMs?: number | null,
 ): string {
-  const now = Date.now();
-  const rangeMs = rangeMinutes * 60 * 1000;
-  const startTime = now - rangeMs;
-  const bucketMs = rangeMs / width;
-
-  const buckets: number[][] = Array.from({ length: width }, () => []);
+  const bucketRanges = buildAlignedBuckets(width, rangeMinutes, resetAtMs ?? null);
+  const buckets: number[][] = Array.from({ length: bucketRanges.length }, () => []);
 
   for (const sample of samples) {
-    if (sample.timestamp < startTime) continue;
     const value = extractor(sample);
     if (value === null) continue;
-    const bucketIdx = Math.min(
-      Math.floor((sample.timestamp - startTime) / bucketMs),
-      width - 1,
-    );
-    buckets[bucketIdx].push(value);
+    // Find which bucket this sample belongs to
+    for (let i = 0; i < bucketRanges.length; i++) {
+      if (sample.timestamp >= bucketRanges[i].start && sample.timestamp < bucketRanges[i].end) {
+        buckets[i].push(value);
+        break;
+      }
+    }
   }
 
-  // Average each bucket; skip rendering if no data at all
-  const averaged: (number | null)[] = buckets.map(
+  // Average per bucket; skip rendering if no data at all
+  const aggregated: (number | null)[] = buckets.map(
     b => b.length > 0 ? b.reduce((a, v) => a + v, 0) / b.length : null,
   );
 
-  if (averaged.every(v => v === null)) return "";
+  if (aggregated.every(v => v === null)) return "";
 
-  return averaged
+  return aggregated
     .map(value => {
       if (value === null) return SPARKLINE_CHARS[0]; // empty bucket = lowest bar
       const clamped = Math.max(0, Math.min(100, value));
@@ -139,10 +196,20 @@ function getDownsampledSparkline(
     .join("");
 }
 
-export function getBlockSparkline(width: number, rangeMinutes?: number): string {
+export function getBlockSparkline(width: number, rangeMinutes?: number, resetAtMs?: number | null): string {
   const history = loadHistory();
+
+  // Persist resetAt so the grid stays stable even when blockInfo is temporarily null
+  if (resetAtMs != null) {
+    if (history.lastResetAtMs !== resetAtMs) {
+      history.lastResetAtMs = resetAtMs;
+      saveHistory(history);
+    }
+  }
+  const effectiveResetAt = resetAtMs ?? history.lastResetAtMs ?? null;
+
   if (rangeMinutes != null) {
-    return getDownsampledSparkline(history.samples, s => s.blockPercent, width, rangeMinutes);
+    return getDownsampledSparkline(history.samples, s => s.blockPercent, width, rangeMinutes, effectiveResetAt);
   }
   const blockSamples = history.samples.map(s => s.blockPercent);
   return getSparkline(blockSamples, width);

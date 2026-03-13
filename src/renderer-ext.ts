@@ -88,8 +88,9 @@ export function renderSparklineSegment(
   warningThreshold: number,
   criticalThreshold: number,
   theme: ColorTheme,
+  resetAtMs?: number | null,
 ): ExtSegment | null {
-  const sparkline = getBlockSparkline(sparklineWidth, sparklineRange);
+  const sparkline = getBlockSparkline(sparklineWidth, sparklineRange, resetAtMs);
   if (!sparkline) return null;
 
   let colors: SegmentColor = theme.block;

@@ -267,7 +267,8 @@ export class Renderer {
     const showSparkline = this.config.block?.showSparkline ?? false;
     if (showSparkline && !ctx.compact) {
       const sparklineWidth = this.config.block?.sparklineWidth ?? 8;
-      const sparkline = getBlockSparkline(sparklineWidth, this.config.block?.sparklineRange);
+      const resetAtMs = ctx.blockInfo?.resetAt?.getTime() ?? null;
+      const sparkline = getBlockSparkline(sparklineWidth, this.config.block?.sparklineRange, resetAtMs);
       if (sparkline) {
         text += ` ${sparkline}`;
       }
@@ -432,6 +433,7 @@ export class Renderer {
       this.config.budget?.warningThreshold ?? 70,
       this.config.budget?.criticalThreshold ?? 90,
       this.theme,
+      ctx.blockInfo?.resetAt?.getTime() ?? null,
     ) as Segment | null;
   }
 
