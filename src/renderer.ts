@@ -196,8 +196,15 @@ export class Renderer {
       ? `${this.symbols.ssh} `
       : "";
 
+    let text = `${sshPrefix}${name}`;
+
+    // Wrap in OSC 8 hyperlink for Cmd+Click support
+    if (ctx.envInfo.directoryPath) {
+      text = `\x1b]8;;file://${ctx.envInfo.directoryPath}\x1b\\${text}\x1b]8;;\x1b\\`;
+    }
+
     return {
-      text: `${sshPrefix}${name}`,
+      text,
       colors: this.theme.directory,
     };
   }

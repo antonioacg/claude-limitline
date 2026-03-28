@@ -134,6 +134,7 @@ export interface GitAheadBehind {
 
 export interface EnvironmentInfo {
   directory: string | null;
+  directoryPath: string | null;
   gitBranch: string | null;
   gitDirty: boolean;
   gitAheadBehind: GitAheadBehind | null;
@@ -206,6 +207,7 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null, kubeConfig?
   debug("Git cwd:", cwd);
   return {
     directory: getDirectoryName(hookData),
+    directoryPath: cwd ?? null,
     gitBranch: cwd ? getGitBranch(cwd) : null,
     gitDirty: cwd ? hasGitChanges(cwd) : false,
     gitAheadBehind: cwd ? getGitAheadBehind(cwd) : null,
