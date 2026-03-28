@@ -5,6 +5,7 @@ import os from "node:os";
 import { basename } from "path";
 import { debug } from "./logger.js";
 import { type ClaudeHookData, formatModelName } from "./claude-hook.js";
+import type { KubeSegmentConfig } from "../config/types.js";
 
 /**
  * Get the current directory/repo name
@@ -94,19 +95,22 @@ export interface EnvironmentInfo {
   kubeContext: string | null;
 }
 
-const KUBE_HIDDEN_CONTEXTS = new Set(["default", "docker-desktop"]);
 const KUBE_CACHE_FILE = path.join(os.homedir(), ".cache", "claude-limitline", "kube-context.json");
 const KUBE_CACHE_MS = 300;
 
 /**
  * Get the current kubectl context, cached to avoid repeated subprocess calls.
+ * Contexts in hideContexts are filtered out (returns null).
  */
-export function getKubeContext(): string | null {
+export function getKubeContext(hideContexts: string[]): string | null {
+  const hidden = new Set(hideContexts);
+
   try {
     const stat = fs.statSync(KUBE_CACHE_FILE);
     if (Date.now() - stat.mtimeMs < KUBE_CACHE_MS) {
       const cached = JSON.parse(fs.readFileSync(KUBE_CACHE_FILE, "utf-8"));
-      return cached.context ?? null;
+      const ctx = cached.context as string | null;
+      return ctx && hidden.has(ctx) ? null : ctx;
     }
   } catch { /* cache miss */ }
 
@@ -116,12 +120,11 @@ export function getKubeContext(): string | null {
       stdio: ["pipe", "pipe", "pipe"],
       timeout: 500,
     }).trim();
-    const result = KUBE_HIDDEN_CONTEXTS.has(context) ? null : context;
     try {
       fs.mkdirSync(path.dirname(KUBE_CACHE_FILE), { recursive: true });
-      fs.writeFileSync(KUBE_CACHE_FILE, JSON.stringify({ context: result }));
+      fs.writeFileSync(KUBE_CACHE_FILE, JSON.stringify({ context }));
     } catch { /* cache write failed, non-fatal */ }
-    return result;
+    return hidden.has(context) ? null : context;
   } catch {
     debug("kubectl not available or no context set");
     return null;
@@ -149,7 +152,7 @@ export function getContextPercent(hookData?: ClaudeHookData | null): number {
 /**
  * Get all environment info at once
  */
-export function getEnvironmentInfo(hookData?: ClaudeHookData | null): EnvironmentInfo {
+export function getEnvironmentInfo(hookData?: ClaudeHookData | null, kubeConfig?: KubeSegmentConfig): EnvironmentInfo {
   const cwd = hookData?.workspace?.current_dir || hookData?.workspace?.project_dir || hookData?.cwd;
   debug("Git cwd:", cwd);
   return {
@@ -160,6 +163,6 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null): Environmen
     contextPercent: getContextPercent(hookData),
     sessionId: hookData?.session_id ?? null,
     sshSession: !!(process.env.SSH_TTY || process.env.SSH_CONNECTION),
-    kubeContext: getKubeContext(),
+    kubeContext: kubeConfig?.enabled ? getKubeContext(kubeConfig.hideContexts ?? []) : null,
   };
 }

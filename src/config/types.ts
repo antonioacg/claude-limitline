@@ -8,6 +8,10 @@ export interface SimpleSegmentConfig {
   enabled: boolean;
 }
 
+export interface KubeSegmentConfig extends SimpleSegmentConfig {
+  hideContexts?: string[];  // Context names to hide (default: ["default", "docker-desktop"])
+}
+
 export interface GitSegmentConfig extends SimpleSegmentConfig {
   showDirtyIndicator?: boolean;  // Show ● when there are uncommitted changes
 }
@@ -64,7 +68,7 @@ export interface LimitlineConfig {
   model?: SimpleSegmentConfig;      // Show Claude model
   block?: BlockSegmentConfig;
   weekly?: WeeklySegmentConfig;
-  kube?: SimpleSegmentConfig;         // Show kubectl context
+  kube?: KubeSegmentConfig;            // Show kubectl context
   context?: SimpleSegmentConfig;    // Show context window usage (right side)
   billing?: BillingSegmentConfig;   // Show billing info (spent, balance, auto-reload)
   budget?: BudgetConfig;
