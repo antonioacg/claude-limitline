@@ -17,6 +17,7 @@ describe("Renderer", () => {
     directory: "my-project",
     gitBranch: "main",
     gitDirty: false,
+    gitAheadBehind: null,
     model: "Opus 4.5",
     contextPercent: 42,
     sessionId: null,

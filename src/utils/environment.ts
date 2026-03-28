@@ -46,6 +46,49 @@ export function getGitBranch(cwd?: string): string | null {
   }
 }
 
+const GIT_FETCH_CACHE_FILE = path.join(os.homedir(), ".cache", "claude-limitline", "git-fetch.json");
+const GIT_FETCH_CACHE_MS = 300;
+
+/**
+ * Get ahead/behind counts relative to upstream, with cached background fetch.
+ */
+export function getGitAheadBehind(cwd?: string): GitAheadBehind | null {
+  const dir = cwd || process.cwd();
+  try {
+    // Background fetch: only if cache is stale
+    let shouldFetch = true;
+    try {
+      const stat = fs.statSync(GIT_FETCH_CACHE_FILE);
+      shouldFetch = Date.now() - stat.mtimeMs >= GIT_FETCH_CACHE_MS;
+    } catch { /* no cache yet */ }
+
+    if (shouldFetch) {
+      try {
+        execSync("git fetch --quiet", {
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+          cwd: dir,
+          timeout: 3000,
+        });
+        fs.mkdirSync(path.dirname(GIT_FETCH_CACHE_FILE), { recursive: true });
+        fs.writeFileSync(GIT_FETCH_CACHE_FILE, JSON.stringify({ ts: Date.now(), cwd: dir }));
+      } catch { /* fetch failed, still show local counts */ }
+    }
+
+    const output = execSync("git rev-list --left-right --count HEAD...@{upstream}", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: dir,
+      timeout: 500,
+    }).trim();
+    const [ahead, behind] = output.split(/\s+/).map(Number);
+    return { ahead: ahead || 0, behind: behind || 0 };
+  } catch {
+    debug("Error getting git ahead/behind (no upstream?)");
+    return null;
+  }
+}
+
 /**
  * Check if the git repo has uncommitted changes
  */
@@ -84,10 +127,16 @@ export function getClaudeModel(hookData?: ClaudeHookData | null): string | null 
   return null;
 }
 
+export interface GitAheadBehind {
+  ahead: number;
+  behind: number;
+}
+
 export interface EnvironmentInfo {
   directory: string | null;
   gitBranch: string | null;
   gitDirty: boolean;
+  gitAheadBehind: GitAheadBehind | null;
   model: string | null;
   contextPercent: number;
   sessionId: string | null;
@@ -159,6 +208,7 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null, kubeConfig?
     directory: getDirectoryName(hookData),
     gitBranch: cwd ? getGitBranch(cwd) : null,
     gitDirty: cwd ? hasGitChanges(cwd) : false,
+    gitAheadBehind: cwd ? getGitAheadBehind(cwd) : null,
     model: getClaudeModel(hookData),
     contextPercent: getContextPercent(hookData),
     sessionId: hookData?.session_id ?? null,

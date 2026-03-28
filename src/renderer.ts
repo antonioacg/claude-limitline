@@ -229,8 +229,15 @@ export class Renderer {
       branch = branch.slice(0, 8) + "…";
     }
 
+    const ab = ctx.envInfo.gitAheadBehind;
+    let aheadBehind = "";
+    if (ab) {
+      if (ab.ahead > 0) aheadBehind += ` ↑${ab.ahead}`;
+      if (ab.behind > 0) aheadBehind += ` ↓${ab.behind}`;
+    }
+
     return {
-      text: `${prefix}${branch}${dirtyIndicator}`,
+      text: `${prefix}${branch}${dirtyIndicator}${aheadBehind}`,
       colors: this.theme.git,
     };
   }
