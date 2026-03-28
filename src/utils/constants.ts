@@ -11,6 +11,7 @@ export const SYMBOLS = {
   sonnet_cost: "\u25c7",     // White diamond ◇
   billing: "\u0024",         // Dollar sign $ (or \u20ac for €)
   ssh: "\uf489",             // Terminal icon
+  kube: "\uf308",            // Kubernetes icon
   auto_reload: "\u21bb",     // Clockwise open circle arrow ↻
   bottleneck: "\u25b2",      // Black up-pointing triangle ▲
   progress_full: "\u2588",   // Full block
@@ -29,6 +30,7 @@ export const TEXT_SYMBOLS = {
   sonnet_cost: "So",
   billing: "$",
   ssh: "SSH",
+  kube: "K8S",
   auto_reload: "AR",
   bottleneck: "*",
   progress_full: "#",

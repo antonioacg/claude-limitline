@@ -13,6 +13,7 @@ export interface ColorTheme {
   weekly: SegmentColor;     // 7-day weekly usage
   opus: SegmentColor;       // Opus-specific weekly usage
   sonnet: SegmentColor;     // Sonnet-specific weekly usage
+  kube: SegmentColor;        // Kubectl context
   context: SegmentColor;    // Context window usage
   billing: SegmentColor;    // Billing/spend info
   warning: SegmentColor;    // Warning state (near limit)
@@ -63,6 +64,7 @@ export const darkTheme: ColorTheme = {
   weekly: { bg: "#1a1a1a", fg: "#98fb98" },
   opus: { bg: "#1a1a1a", fg: "#c792ea" },      // Purple for Opus
   sonnet: { bg: "#1a1a1a", fg: "#89ddff" },    // Light blue for Sonnet
+  kube: { bg: "#3a1a1a", fg: "#f7768e" },       // Red for kube context
   context: { bg: "#2a2a2a", fg: "#87ceeb" },   // Sky blue for context
   billing: { bg: "#3d3d00", fg: "#ffd700" },   // Gold for billing
   warning: { bg: "#d75f00", fg: "#ffffff" },
@@ -78,6 +80,7 @@ export const lightTheme: ColorTheme = {
   weekly: { bg: "#10b981", fg: "#ffffff" },
   opus: { bg: "#8b5cf6", fg: "#ffffff" },      // Purple for Opus
   sonnet: { bg: "#0ea5e9", fg: "#ffffff" },    // Sky blue for Sonnet
+  kube: { bg: "#fecdd3", fg: "#be123c" },      // Red for kube context
   context: { bg: "#6366f1", fg: "#ffffff" },   // Indigo for context
   billing: { bg: "#f59e0b", fg: "#ffffff" },   // Amber for billing
   warning: { bg: "#f59e0b", fg: "#000000" },
@@ -93,6 +96,7 @@ export const nordTheme: ColorTheme = {
   weekly: { bg: "#2e3440", fg: "#8fbcbb" },
   opus: { bg: "#2e3440", fg: "#b48ead" },      // Nord purple for Opus
   sonnet: { bg: "#2e3440", fg: "#88c0d0" },    // Nord frost for Sonnet
+  kube: { bg: "#3b4252", fg: "#bf616a" },      // Nord red for kube context
   context: { bg: "#3b4252", fg: "#81a1c1" },   // Nord frost for context
   billing: { bg: "#3b4252", fg: "#ebcb8b" },   // Nord yellow for billing
   warning: { bg: "#d08770", fg: "#2e3440" },
@@ -108,6 +112,7 @@ export const gruvboxTheme: ColorTheme = {
   weekly: { bg: "#282828", fg: "#fabd2f" },
   opus: { bg: "#282828", fg: "#d3869b" },      // Gruvbox purple for Opus
   sonnet: { bg: "#282828", fg: "#8ec07c" },    // Gruvbox aqua for Sonnet
+  kube: { bg: "#3c3836", fg: "#fb4934" },      // Gruvbox red for kube context
   context: { bg: "#3c3836", fg: "#83a598" },   // Gruvbox blue for context
   billing: { bg: "#3c3836", fg: "#fabd2f" },   // Gruvbox yellow for billing
   warning: { bg: "#d79921", fg: "#282828" },
@@ -123,6 +128,7 @@ export const tokyoNightTheme: ColorTheme = {
   weekly: { bg: "#1a202c", fg: "#4fd6be" },
   opus: { bg: "#1a202c", fg: "#bb9af7" },      // Tokyo purple for Opus
   sonnet: { bg: "#1a202c", fg: "#7dcfff" },    // Tokyo cyan for Sonnet
+  kube: { bg: "#1a202c", fg: "#f7768e" },      // Tokyo red for kube context
   context: { bg: "#2d3748", fg: "#7aa2f7" },   // Tokyo blue for context
   billing: { bg: "#1a202c", fg: "#e0af68" },   // Tokyo yellow for billing
   warning: { bg: "#e0af68", fg: "#1a1b26" },
@@ -138,6 +144,7 @@ export const rosePineTheme: ColorTheme = {
   weekly: { bg: "#232136", fg: "#9ccfd8" },
   opus: { bg: "#232136", fg: "#c4a7e7" },      // Rose Pine iris for Opus
   sonnet: { bg: "#232136", fg: "#31748f" },    // Rose Pine pine for Sonnet
+  kube: { bg: "#232136", fg: "#eb6f92" },      // Rose Pine love for kube context
   context: { bg: "#2a273f", fg: "#9ccfd8" },   // Rose Pine foam for context
   billing: { bg: "#232136", fg: "#f6c177" },   // Rose Pine gold for billing
   warning: { bg: "#f6c177", fg: "#191724" },
@@ -153,6 +160,7 @@ export const tokyoNightDayTheme: ColorTheme = {
   weekly: { bg: "transparent", fg: "#059669" },
   opus: { bg: "transparent", fg: "#7c3aed" },
   sonnet: { bg: "transparent", fg: "#0891b2" },
+  kube: { bg: "transparent", fg: "#e11d48" },   // Rose red for kube context
   context: { bg: "transparent", fg: "#6366f1" },
   billing: { bg: "transparent", fg: "#d97706" },  // Amber for billing
   warning: { bg: "transparent", fg: "#d97706" },

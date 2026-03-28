@@ -79,6 +79,7 @@ export class Renderer {
       progressFull: symbolSet.progress_full,
       progressEmpty: symbolSet.progress_empty,
       ssh: symbolSet.ssh,
+      kube: symbolSet.kube,
       trendUp: "↑",
       trendDown: "↓",
     };
@@ -198,6 +199,18 @@ export class Renderer {
     return {
       text: `${sshPrefix}${name}`,
       colors: this.theme.directory,
+    };
+  }
+
+  private renderKubeContext(ctx: RenderContext): Segment | null {
+    if (!this.config.kube?.enabled || !ctx.envInfo.kubeContext) {
+      return null;
+    }
+
+    const icon = this.usePowerline ? this.symbols.kube : "K8S";
+    return {
+      text: `${icon} ${ctx.envInfo.kubeContext}`,
+      colors: this.theme.kube,
     };
   }
 
@@ -466,6 +479,8 @@ export class Renderer {
         return this.renderSessionId(ctx);
       case "sparkline":
         return this.renderSparkline(ctx);
+      case "kubeContext":
+        return this.renderKubeContext(ctx);
       default:
         return null;
     }

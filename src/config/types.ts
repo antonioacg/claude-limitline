@@ -49,7 +49,7 @@ export interface DisplayConfig {
   compactWidth?: number;  // Terminal width threshold for compact mode (default 80)
 }
 
-export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId" | "sparkline";
+export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId" | "sparkline" | "kubeContext";
 
 export interface BillingSegmentConfig extends SimpleSegmentConfig {
   warningThreshold?: number;   // Utilization % threshold for warning (default 70)
@@ -64,6 +64,7 @@ export interface LimitlineConfig {
   model?: SimpleSegmentConfig;      // Show Claude model
   block?: BlockSegmentConfig;
   weekly?: WeeklySegmentConfig;
+  kube?: SimpleSegmentConfig;         // Show kubectl context
   context?: SimpleSegmentConfig;    // Show context window usage (right side)
   billing?: BillingSegmentConfig;   // Show billing info (spent, balance, auto-reload)
   budget?: BudgetConfig;

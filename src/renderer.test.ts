@@ -21,6 +21,7 @@ describe("Renderer", () => {
     contextPercent: 42,
     sessionId: null,
     sshSession: false,
+    kubeContext: null,
   };
 
   const defaultBlockInfo: BlockInfo = {

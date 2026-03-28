@@ -1,4 +1,7 @@
 import { execSync } from "child_process";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { basename } from "path";
 import { debug } from "./logger.js";
 import { type ClaudeHookData, formatModelName } from "./claude-hook.js";
@@ -88,6 +91,41 @@ export interface EnvironmentInfo {
   contextPercent: number;
   sessionId: string | null;
   sshSession: boolean;
+  kubeContext: string | null;
+}
+
+const KUBE_HIDDEN_CONTEXTS = new Set(["default", "docker-desktop"]);
+const KUBE_CACHE_FILE = path.join(os.homedir(), ".cache", "claude-limitline", "kube-context.json");
+const KUBE_CACHE_MS = 300;
+
+/**
+ * Get the current kubectl context, cached to avoid repeated subprocess calls.
+ */
+export function getKubeContext(): string | null {
+  try {
+    const stat = fs.statSync(KUBE_CACHE_FILE);
+    if (Date.now() - stat.mtimeMs < KUBE_CACHE_MS) {
+      const cached = JSON.parse(fs.readFileSync(KUBE_CACHE_FILE, "utf-8"));
+      return cached.context ?? null;
+    }
+  } catch { /* cache miss */ }
+
+  try {
+    const context = execSync("kubectl config current-context", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 500,
+    }).trim();
+    const result = KUBE_HIDDEN_CONTEXTS.has(context) ? null : context;
+    try {
+      fs.mkdirSync(path.dirname(KUBE_CACHE_FILE), { recursive: true });
+      fs.writeFileSync(KUBE_CACHE_FILE, JSON.stringify({ context: result }));
+    } catch { /* cache write failed, non-fatal */ }
+    return result;
+  } catch {
+    debug("kubectl not available or no context set");
+    return null;
+  }
 }
 
 /**
@@ -122,5 +160,6 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null): Environmen
     contextPercent: getContextPercent(hookData),
     sessionId: hookData?.session_id ?? null,
     sshSession: !!(process.env.SSH_TTY || process.env.SSH_CONNECTION),
+    kubeContext: getKubeContext(),
   };
 }
