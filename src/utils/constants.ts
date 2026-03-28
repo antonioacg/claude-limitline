@@ -10,6 +10,7 @@ export const SYMBOLS = {
   opus_cost: "\u25c8",       // Diamond with dot ◈
   sonnet_cost: "\u25c7",     // White diamond ◇
   billing: "\u0024",         // Dollar sign $ (or \u20ac for €)
+  ssh: "\uf489",             // Terminal icon
   auto_reload: "\u21bb",     // Clockwise open circle arrow ↻
   bottleneck: "\u25b2",      // Black up-pointing triangle ▲
   progress_full: "\u2588",   // Full block
@@ -27,6 +28,7 @@ export const TEXT_SYMBOLS = {
   opus_cost: "Op",
   sonnet_cost: "So",
   billing: "$",
+  ssh: "SSH",
   auto_reload: "AR",
   bottleneck: "*",
   progress_full: "#",

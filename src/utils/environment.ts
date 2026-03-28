@@ -87,6 +87,7 @@ export interface EnvironmentInfo {
   model: string | null;
   contextPercent: number;
   sessionId: string | null;
+  sshSession: boolean;
 }
 
 /**
@@ -120,5 +121,6 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null): Environmen
     model: getClaudeModel(hookData),
     contextPercent: getContextPercent(hookData),
     sessionId: hookData?.session_id ?? null,
+    sshSession: !!(process.env.SSH_TTY || process.env.SSH_CONNECTION),
   };
 }

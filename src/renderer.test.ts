@@ -20,6 +20,7 @@ describe("Renderer", () => {
     model: "Opus 4.5",
     contextPercent: 42,
     sessionId: null,
+    sshSession: false,
   };
 
   const defaultBlockInfo: BlockInfo = {

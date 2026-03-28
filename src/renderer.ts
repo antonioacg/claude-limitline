@@ -78,6 +78,7 @@ export class Renderer {
       context: "◐",  // Half-filled circle for context
       progressFull: symbolSet.progress_full,
       progressEmpty: symbolSet.progress_empty,
+      ssh: symbolSet.ssh,
       trendUp: "↑",
       trendDown: "↓",
     };
@@ -190,8 +191,12 @@ export class Renderer {
       ? ctx.envInfo.directory.slice(0, 10) + "…"
       : ctx.envInfo.directory;
 
+    const sshPrefix = ctx.envInfo.sshSession
+      ? `${this.symbols.ssh} `
+      : "";
+
     return {
-      text: `${name}`,
+      text: `${sshPrefix}${name}`,
       colors: this.theme.directory,
     };
   }
