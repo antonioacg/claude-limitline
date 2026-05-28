@@ -53,7 +53,7 @@ export interface DisplayConfig {
   compactWidth?: number;  // Terminal width threshold for compact mode (default 80)
 }
 
-export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId" | "sparkline" | "kubeContext";
+export type SegmentName = "directory" | "git" | "model" | "block" | "weekly" | "context" | "billing" | "sessionId" | "sparkline" | "kubeContext" | "askGate";
 
 export interface BillingSegmentConfig extends SimpleSegmentConfig {
   warningThreshold?: number;   // Utilization % threshold for warning (default 70)
@@ -71,6 +71,7 @@ export interface LimitlineConfig {
   kube?: KubeSegmentConfig;            // Show kubectl context
   context?: SimpleSegmentConfig;    // Show context window usage (right side)
   billing?: BillingSegmentConfig;   // Show billing info (spent, balance, auto-reload)
+  askGate?: SimpleSegmentConfig;    // Per-session ask-gate indicator (claude-harness)
   budget?: BudgetConfig;
   theme?: string;
   segmentOrder?: SegmentName[] | SegmentName[][];  // Flat = single line, nested = one line per inner array
@@ -120,6 +121,9 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
   billing: {
     enabled: false,
   },
+  askGate: {
+    enabled: true,
+  },
   budget: {
     pollInterval: 15,
     warningThreshold: 70,
@@ -127,7 +131,7 @@ export const DEFAULT_CONFIG: LimitlineConfig = {
   },
   theme: "dark",
   segmentOrder: [
-    ["directory", "git"],
+    ["askGate", "directory", "git"],
     ["model", "block", "weekly"],
   ],
   showTrend: true,

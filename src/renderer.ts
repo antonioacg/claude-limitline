@@ -8,6 +8,7 @@ import { type EnvironmentInfo } from "./utils/environment.js";
 import { type TrendInfo } from "./utils/oauth.js";
 import { getTerminalWidth } from "./utils/terminal.js";
 import { getBlockSparkline } from "./utils/history.js";
+import { resolveHarnessConfig } from "./utils/harness-config.js";
 import {
   renderBillingSegment,
   renderSparklineSegment,
@@ -473,6 +474,30 @@ export class Renderer {
     return renderSessionIdSegment(ctx.envInfo.sessionId, this.theme) as Segment | null;
   }
 
+  // Per-session ask-gate indicator. Reads the same JSON files the
+  // claude-harness PreToolUse hook reads; renders only when at least one gate
+  // is on, so sessions with no overrides stay visually quiet. Tmux-only,
+  // matching the hook's own guard — outside tmux the gate is inert and
+  // showing an indicator would lie.
+  private renderAskGate(ctx: RenderContext): Segment | null {
+    if (!this.config.askGate?.enabled) return null;
+    if (!process.env.TMUX) return null;
+    const cfg = resolveHarnessConfig(ctx.envInfo.sessionId);
+    const e = cfg.ask_on_edits === true;
+    const b = cfg.ask_on_bash === true;
+    if (!e && !b) return null;
+    let label: string;
+    if (e && b) label = "EB";
+    else if (e) label = "E";
+    else label = "B";
+    // ↗ = editor_on_ask is on, so a prompted edit also pops the file open.
+    const suffix = cfg.editor_on_ask === true ? "↗" : "";
+    return {
+      text: label + suffix,
+      colors: this.theme.warning,
+    };
+  }
+
   private getSegment(name: SegmentName, ctx: RenderContext): Segment | null {
     switch (name) {
       case "directory":
@@ -493,8 +518,13 @@ export class Renderer {
         return this.renderSessionId(ctx);
       case "sparkline":
         return this.renderSparkline(ctx);
+<<<<<<< HEAD
       case "kubeContext":
         return this.renderKubeContext(ctx);
+=======
+      case "askGate":
+        return this.renderAskGate(ctx);
+>>>>>>> 79e5d57 (feat(askGate): harness gate indicator + OSC 8 directory hyperlink)
       default:
         return null;
     }
@@ -527,7 +557,7 @@ export class Renderer {
     };
 
     const defaultOrder: SegmentName[][] = [
-      ["directory", "git"],
+      ["askGate", "directory", "git"],
       ["model", "block", "weekly"],
     ];
     const lines = this.normalizeSegmentOrder(this.config.segmentOrder ?? defaultOrder);
