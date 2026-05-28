@@ -24,6 +24,11 @@ export interface ClaudeHookData {
     };
     context_window_size: number;
   };
+  // Live effort level. Added to statusline stdin in Claude Code 2.1.133;
+  // absent on older versions and on models that don't support effort.
+  effort?: {
+    level?: string;
+  };
   version?: string;
 }
 

@@ -257,9 +257,12 @@ export class Renderer {
 
     const icon = this.usePowerline ? this.symbols.model : "";
     const prefix = icon ? `${icon} ` : "";
+    // Live effort level (high/medium/low/xhigh/max), when the current model
+    // supports it. Hook payload only — added in Claude Code 2.1.133.
+    const effortSuffix = ctx.envInfo.effortLevel ? ` ${ctx.envInfo.effortLevel}` : "";
 
     return {
-      text: `${prefix}${ctx.envInfo.model}`,
+      text: `${prefix}${ctx.envInfo.model}${effortSuffix}`,
       colors: this.theme.model,
     };
   }
@@ -518,13 +521,10 @@ export class Renderer {
         return this.renderSessionId(ctx);
       case "sparkline":
         return this.renderSparkline(ctx);
-<<<<<<< HEAD
       case "kubeContext":
         return this.renderKubeContext(ctx);
-=======
       case "askGate":
         return this.renderAskGate(ctx);
->>>>>>> 79e5d57 (feat(askGate): harness gate indicator + OSC 8 directory hyperlink)
       default:
         return null;
     }

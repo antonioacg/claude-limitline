@@ -139,6 +139,7 @@ export interface EnvironmentInfo {
   gitDirty: boolean;
   gitAheadBehind: GitAheadBehind | null;
   model: string | null;
+  effortLevel: string | null;
   contextPercent: number;
   sessionId: string | null;
   sshSession: boolean;
@@ -212,6 +213,10 @@ export function getEnvironmentInfo(hookData?: ClaudeHookData | null, kubeConfig?
     gitDirty: cwd ? hasGitChanges(cwd) : false,
     gitAheadBehind: cwd ? getGitAheadBehind(cwd) : null,
     model: getClaudeModel(hookData),
+    // Hook payload only — `effort.level` was added in Claude Code 2.1.133.
+    // Pre-2.1.133 the segment stays silent, which is more honest than
+    // reading a possibly-stale default from settings.json.
+    effortLevel: hookData?.effort?.level ?? null,
     contextPercent: getContextPercent(hookData),
     sessionId: hookData?.session_id ?? null,
     sshSession: !!(process.env.SSH_TTY || process.env.SSH_CONNECTION),
