@@ -493,8 +493,8 @@ export class Renderer {
     if (e && b) label = "EB";
     else if (e) label = "E";
     else label = "B";
-    // ↗ = editor_on_ask is on, so a prompted edit also pops the file open.
-    const suffix = cfg.editor_on_ask === true ? "↗" : "";
+    // ↗ = editor_on_edits is on, so every edit pops the file open.
+    const suffix = cfg.editor_on_edits === true ? "↗" : "";
     return {
       text: label + suffix,
       colors: this.theme.warning,

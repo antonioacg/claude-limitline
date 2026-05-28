@@ -15,14 +15,14 @@ import * as path from "node:path";
 export interface HarnessSessionConfig {
   ask_on_edits?: boolean;
   ask_on_bash?: boolean;
-  editor_on_ask?: boolean;
+  editor_on_edits?: boolean;
   editor_command?: string;
 }
 
 const BUILTIN: HarnessSessionConfig = {
   ask_on_edits: false,
   ask_on_bash: false,
-  editor_on_ask: false,
+  editor_on_edits: false,
   editor_command: "code -g",
 };
 
