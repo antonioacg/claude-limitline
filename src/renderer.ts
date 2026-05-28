@@ -488,13 +488,15 @@ export class Renderer {
     const cfg = resolveHarnessConfig(ctx.envInfo.sessionId);
     const e = cfg.ask_on_edits === true;
     const b = cfg.ask_on_bash === true;
-    if (!e && !b) return null;
-    let label: string;
+    const w = cfg.editor_on_edits === true;
+    if (!e && !b && !w) return null;
+    let label = "";
     if (e && b) label = "EB";
     else if (e) label = "E";
-    else label = "B";
-    // ↗ = editor_on_edits is on, so every edit pops the file open.
-    const suffix = cfg.editor_on_edits === true ? "↗" : "";
+    else if (b) label = "B";
+    // ↗ = editor_on_edits is on, so every edit pops the file open. Renders
+    // alone when no ask gate is active — autonomous-watch mode.
+    const suffix = w ? "↗" : "";
     return {
       text: label + suffix,
       colors: this.theme.warning,
