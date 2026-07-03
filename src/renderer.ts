@@ -477,11 +477,11 @@ export class Renderer {
     return renderSessionIdSegment(ctx.envInfo.sessionId, this.theme) as Segment | null;
   }
 
-  // Per-session ask-gate indicator. Reads the same JSON files the
-  // claude-harness PreToolUse hook reads; renders only when at least one gate
-  // is on, so sessions with no overrides stay visually quiet. Tmux-only,
-  // matching the hook's own guard — outside tmux the gate is inert and
-  // showing an indicator would lie.
+  // Per-session harness-override indicator. Reads the same JSON files the
+  // claude-harness PreToolUse hook reads; renders only when at least one
+  // override is active, so sessions with defaults stay visually quiet.
+  // Tmux-only, matching the hook's own guard — outside tmux the gates are
+  // inert and showing an indicator would lie.
   private renderAskGate(ctx: RenderContext): Segment | null {
     if (!this.config.askGate?.enabled) return null;
     if (!process.env.TMUX) return null;
@@ -489,14 +489,16 @@ export class Renderer {
     const e = cfg.ask_on_edits === true;
     const b = cfg.ask_on_bash === true;
     const w = cfg.editor_on_edits === true;
-    if (!e && !b && !w) return null;
+    const h = cfg.suspend_hibernation === true;
+    if (!e && !b && !w && !h) return null;
     let label = "";
     if (e && b) label = "EB";
     else if (e) label = "E";
     else if (b) label = "B";
-    // ↗ = editor_on_edits is on, so every edit pops the file open. Renders
-    // alone when no ask gate is active — autonomous-watch mode.
-    const suffix = w ? "↗" : "";
+    // ↗ = editor_on_edits is on, so every edit pops the file open.
+    // ⏸ = suspend_hibernation is on — this session won't soft/hard auto-suspend.
+    // Either can render alone (e.g. ⏸ = pinned-awake, no ask gate).
+    const suffix = (w ? "↗" : "") + (h ? "⏸" : "");
     return {
       text: label + suffix,
       colors: this.theme.warning,

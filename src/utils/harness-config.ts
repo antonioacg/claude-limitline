@@ -17,6 +17,7 @@ export interface HarnessSessionConfig {
   ask_on_bash?: boolean;
   editor_on_edits?: boolean;
   editor_command?: string;
+  suspend_hibernation?: boolean;
 }
 
 const BUILTIN: HarnessSessionConfig = {
@@ -24,6 +25,7 @@ const BUILTIN: HarnessSessionConfig = {
   ask_on_bash: false,
   editor_on_edits: false,
   editor_command: "code -g",
+  suspend_hibernation: false,
 };
 
 function dataHome(): string {
