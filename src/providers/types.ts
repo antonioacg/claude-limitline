@@ -108,7 +108,7 @@ export class RateLimitError extends Error {
  */
 export interface ProviderConfig {
   /** Explicit provider type - if not set, auto-detection is used */
-  type?: "anthropic" | "moonshot" | "glm" | "auto";
+  type?: "anthropic" | "moonshot" | "glm" | "kimi" | "auto";
   /** Custom API base URL */
   apiUrl?: string;
   /** Custom token (overrides auto-detection) */

@@ -7,6 +7,7 @@ import type { Provider } from "./types.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { MoonshotProvider } from "./moonshot.js";
 import { GlmProvider } from "./glm.js";
+import { KimiProvider } from "./kimi.js";
 import { debug } from "../utils/logger.js";
 
 export type { Provider, UsageResponse, UsageWindow, BillingInfo, TrendDirection, TrendInfo, ProviderConfig } from "./types.js";
@@ -14,6 +15,7 @@ export { RateLimitError } from "./types.js";
 export { AnthropicProvider } from "./anthropic.js";
 export { MoonshotProvider } from "./moonshot.js";
 export { GlmProvider } from "./glm.js";
+export { KimiProvider } from "./kimi.js";
 
 // Cache for the current provider instance
 let currentProvider: Provider | null = null;
@@ -24,8 +26,9 @@ let providerDetectionDone = false;
  * Detection order:
  * 1. ANTHROPIC_BASE_URL - if contains "moonshot", use Moonshot
  * 2. ANTHROPIC_BASE_URL - if contains "z.ai", use GLM
- * 3. ANTHROPIC_AUTH_TOKEN format - if starts with "sk-ant-oat", use Anthropic
- * 4. Non-Anthropic token → Moonshot; no indicators → default Anthropic
+ * 3. ANTHROPIC_BASE_URL - if contains "kimi", use Kimi
+ * 4. ANTHROPIC_AUTH_TOKEN format - if starts with "sk-ant-oat", use Anthropic
+ * 5. Non-Anthropic token → Moonshot; no indicators → default Anthropic
  */
 export async function detectProvider(): Promise<Provider | null> {
   // Check ANTHROPIC_BASE_URL for moonshot
@@ -39,6 +42,12 @@ export async function detectProvider(): Promise<Provider | null> {
   if (baseUrl.includes("z.ai")) {
     debug("Detected GLM provider from ANTHROPIC_BASE_URL");
     return new GlmProvider();
+  }
+
+  // Check ANTHROPIC_BASE_URL for Kimi (api.kimi.com/coding/)
+  if (baseUrl.includes("kimi")) {
+    debug("Detected Kimi provider from ANTHROPIC_BASE_URL");
+    return new KimiProvider();
   }
 
   // Check token format

@@ -11,6 +11,7 @@ import {
 import { AnthropicProvider } from "../providers/anthropic.js";
 import { MoonshotProvider } from "../providers/moonshot.js";
 import { GlmProvider } from "../providers/glm.js";
+import { KimiProvider } from "../providers/kimi.js";
 import { setProvider } from "../providers/index.js";
 
 // Mock fetch globally
@@ -289,6 +290,15 @@ describe("oauth utilities", () => {
 
       expect(provider).toBeInstanceOf(GlmProvider);
       expect(provider).not.toBeInstanceOf(MoonshotProvider);
+    });
+
+    it("detects Kimi provider from ANTHROPIC_BASE_URL containing kimi", async () => {
+      process.env.ANTHROPIC_BASE_URL = "https://api.kimi.com/coding/";
+
+      const provider = await getCurrentProvider();
+
+      expect(provider).toBeInstanceOf(KimiProvider);
+      expect(provider?.name).toBe("Kimi");
     });
 
     it("detects Anthropic provider from token format", async () => {
