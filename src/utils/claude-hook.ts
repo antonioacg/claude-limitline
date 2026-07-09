@@ -73,6 +73,17 @@ export async function readHookData(): Promise<ClaudeHookData | null> {
  * Format model name for compact display
  */
 export function formatModelName(modelId: string, displayName?: string): string {
+  // Custom Anthropic-compatible backends: Claude Code passes the raw model id
+  // (e.g. "glm-5.2[1m]") as both id and display_name, so prettify from the id
+  // before the display_name pass-through below.
+  if (modelId.toLowerCase().startsWith("glm-")) {
+    const ver = modelId.replace(/\[.*\]$/, "").replace(/^glm-/i, "").trim();
+    return ver ? `GLM ${ver}` : "GLM";
+  }
+  if (modelId.toLowerCase().startsWith("kimi")) {
+    return "Kimi Latest";
+  }
+
   // If we have a display name that's reasonable, use it
   if (displayName && displayName.length <= 20) {
     // Clean up display name

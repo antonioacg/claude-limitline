@@ -66,6 +66,28 @@ describe("formatModelName", () => {
     });
   });
 
+  describe("custom backends (GLM / Kimi)", () => {
+    it("formats glm-5.2[1m] as GLM 5.2 (drops [1m] marker)", () => {
+      expect(formatModelName("glm-5.2[1m]")).toBe("GLM 5.2");
+    });
+
+    it("formats glm-4.7 as GLM 4.7", () => {
+      expect(formatModelName("glm-4.7")).toBe("GLM 4.7");
+    });
+
+    it("formats a bare glm- prefix as GLM", () => {
+      expect(formatModelName("glm-")).toBe("GLM");
+    });
+
+    it("formats kimi-for-coding as Kimi Latest", () => {
+      expect(formatModelName("kimi-for-coding")).toBe("Kimi Latest");
+    });
+
+    it("prettifies GLM even when display_name is the raw id (Claude Code case)", () => {
+      expect(formatModelName("glm-5.2[1m]", "glm-5.2[1m]")).toBe("GLM 5.2");
+    });
+  });
+
   describe("display name handling", () => {
     it("uses display name when provided and short", () => {
       expect(formatModelName("claude-opus-4-5-20251101", "Claude Opus 4.5")).toBe("Opus 4.5");
