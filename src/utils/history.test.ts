@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getSparkline, pruneOldSamples, type HistoryData } from "./history.js";
+import type { Mock } from "vitest";
+import fs from "node:fs";
+import { getSparkline, pruneOldSamples, addSample, type HistoryData } from "./history.js";
 
 // Mock fs module
 vi.mock("node:fs", () => ({
@@ -116,6 +118,21 @@ describe("history utilities", () => {
       const pruned = pruneOldSamples(data);
 
       expect(pruned.samples).toHaveLength(0);
+    });
+  });
+
+  describe("per-provider history files", () => {
+    it("writes each provider's history to its own file", () => {
+      addSample("GLM", 22, 4);
+      addSample("Anthropic", 50, 30);
+
+      const calls = (fs.writeFileSync as unknown as Mock).mock.calls as unknown[][];
+      const glmPath = calls[0][0] as string;
+      const anthPath = calls[1][0] as string;
+
+      expect(glmPath).toMatch(/limitline-history-glm\.json$/);
+      expect(anthPath).toMatch(/limitline-history-anthropic\.json$/);
+      expect(glmPath).not.toBe(anthPath);
     });
   });
 });

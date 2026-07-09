@@ -47,6 +47,7 @@ interface RenderContext {
   envInfo: EnvironmentInfo;
   trendInfo: TrendInfo | null;
   compact: boolean;
+  providerName: string;
 }
 
 export class Renderer {
@@ -304,7 +305,7 @@ export class Renderer {
     if (showSparkline && !ctx.compact) {
       const sparklineWidth = this.config.block?.sparklineWidth ?? 8;
       const resetAtMs = ctx.blockInfo?.resetAt?.getTime() ?? null;
-      const sparkline = getBlockSparkline(sparklineWidth, this.config.block?.sparklineRange, resetAtMs);
+      const sparkline = getBlockSparkline(ctx.providerName, sparklineWidth, this.config.block?.sparklineRange, resetAtMs);
       if (sparkline) {
         text += ` ${sparkline}`;
       }
@@ -469,6 +470,7 @@ export class Renderer {
       this.config.budget?.warningThreshold ?? 70,
       this.config.budget?.criticalThreshold ?? 90,
       this.theme,
+      ctx.providerName,
       ctx.blockInfo?.resetAt?.getTime() ?? null,
     ) as Segment | null;
   }
@@ -548,7 +550,8 @@ export class Renderer {
     weeklyInfo: WeeklyInfo | null,
     billingInfo: BillingSegmentInfo | null,
     envInfo: EnvironmentInfo,
-    trendInfo: TrendInfo | null = null
+    trendInfo: TrendInfo | null = null,
+    providerName: string = "anthropic"
   ): string {
     const compact = this.isCompactMode();
     const ctx: RenderContext = {
@@ -558,6 +561,7 @@ export class Renderer {
       envInfo,
       trendInfo,
       compact,
+      providerName,
     };
 
     const defaultOrder: SegmentName[][] = [

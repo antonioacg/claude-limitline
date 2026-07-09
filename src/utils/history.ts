@@ -24,14 +24,37 @@ export function initHistory(config: { sparklineRange?: number }): void {
     maxHistoryAgeMs = Math.max(config.sparklineRange * 60 * 1000 * 2, 60 * 60 * 1000);
   }
 }
-const HISTORY_FILE = "limitline-history.json";
+const HISTORY_DIR_NAME = ".claude";
+const LEGACY_HISTORY_FILE = "limitline-history.json";
 
-function getHistoryPath(): string {
-  return path.join(os.homedir(), ".claude", HISTORY_FILE);
+// Resolved lazily so tests can redirect via process.env.HOME.
+function historyDir(): string {
+  return path.join(os.homedir(), HISTORY_DIR_NAME);
 }
 
-export function loadHistory(): HistoryData {
-  const historyPath = getHistoryPath();
+function getHistoryPath(provider: string): string {
+  return path.join(historyDir(), `limitline-history-${provider.toLowerCase()}.json`);
+}
+
+// One-time migration: adopt the pre-provider-history file for Anthropic so
+// existing sparkline data isn't lost. Other providers start fresh.
+function maybeMigrateLegacy(provider: string): void {
+  if (provider.toLowerCase() !== "anthropic") return;
+  const legacy = path.join(historyDir(), LEGACY_HISTORY_FILE);
+  const next = getHistoryPath(provider);
+  try {
+    if (!fs.existsSync(next) && fs.existsSync(legacy)) {
+      fs.copyFileSync(legacy, next);
+      debug(`Migrated legacy history to ${next}`);
+    }
+  } catch (error) {
+    debug("History migration failed:", error);
+  }
+}
+
+export function loadHistory(provider: string): HistoryData {
+  maybeMigrateLegacy(provider);
+  const historyPath = getHistoryPath(provider);
   try {
     if (fs.existsSync(historyPath)) {
       const content = fs.readFileSync(historyPath, "utf-8");
@@ -44,8 +67,8 @@ export function loadHistory(): HistoryData {
   return { samples: [] };
 }
 
-export function saveHistory(data: HistoryData): void {
-  const historyPath = getHistoryPath();
+export function saveHistory(provider: string, data: HistoryData): void {
+  const historyPath = getHistoryPath(provider);
   try {
     const dir = path.dirname(historyPath);
     if (!fs.existsSync(dir)) {
@@ -65,17 +88,18 @@ export function pruneOldSamples(data: HistoryData): HistoryData {
 }
 
 export function addSample(
+  provider: string,
   blockPercent: number | null,
   weeklyPercent: number | null
 ): void {
-  const history = loadHistory();
+  const history = loadHistory(provider);
   history.samples.push({
     timestamp: Date.now(),
     blockPercent,
     weeklyPercent,
   });
   const pruned = pruneOldSamples(history);
-  saveHistory(pruned);
+  saveHistory(provider, pruned);
 }
 
 export function getSparkline(
@@ -196,14 +220,14 @@ function getDownsampledSparkline(
     .join("");
 }
 
-export function getBlockSparkline(width: number, rangeMinutes?: number, resetAtMs?: number | null): string {
-  const history = loadHistory();
+export function getBlockSparkline(provider: string, width: number, rangeMinutes?: number, resetAtMs?: number | null): string {
+  const history = loadHistory(provider);
 
   // Persist resetAt so the grid stays stable even when blockInfo is temporarily null
   if (resetAtMs != null) {
     if (history.lastResetAtMs !== resetAtMs) {
       history.lastResetAtMs = resetAtMs;
-      saveHistory(history);
+      saveHistory(provider, history);
     }
   }
   const effectiveResetAt = resetAtMs ?? history.lastResetAtMs ?? null;
@@ -215,8 +239,8 @@ export function getBlockSparkline(width: number, rangeMinutes?: number, resetAtM
   return getSparkline(blockSamples, width);
 }
 
-export function getWeeklySparkline(width: number): string {
-  const history = loadHistory();
+export function getWeeklySparkline(provider: string, width: number): string {
+  const history = loadHistory(provider);
   const weeklySamples = history.samples.map(s => s.weeklyPercent);
   return getSparkline(weeklySamples, width);
 }

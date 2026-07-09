@@ -28,6 +28,7 @@ async function main(): Promise<void> {
 
     // Detect provider to check capabilities
     const provider = await getCurrentProvider();
+    const providerName = provider?.name ?? "anthropic";
     const supportsUsage = provider?.supportsUsage ?? true;
     debug(`Provider: ${provider?.name}, supportsUsage: ${supportsUsage}`);
 
@@ -60,6 +61,7 @@ async function main(): Promise<void> {
     // Record usage sample for sparkline history
     if (blockInfo?.percentUsed !== null || weeklyInfo?.percentUsed !== null) {
       addSample(
+        providerName,
         blockInfo?.percentUsed ?? null,
         weeklyInfo?.percentUsed ?? null
       );
@@ -71,7 +73,7 @@ async function main(): Promise<void> {
 
     // Render output
     const renderer = new Renderer(config);
-    const output = renderer.render(blockInfo, weeklyInfo, billingInfo, envInfo, trendInfo);
+    const output = renderer.render(blockInfo, weeklyInfo, billingInfo, envInfo, trendInfo, providerName);
 
     if (output) {
       process.stdout.write(output);
