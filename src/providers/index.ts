@@ -6,12 +6,14 @@
 import type { Provider } from "./types.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { MoonshotProvider } from "./moonshot.js";
+import { GlmProvider } from "./glm.js";
 import { debug } from "../utils/logger.js";
 
 export type { Provider, UsageResponse, UsageWindow, BillingInfo, TrendDirection, TrendInfo, ProviderConfig } from "./types.js";
 export { RateLimitError } from "./types.js";
 export { AnthropicProvider } from "./anthropic.js";
 export { MoonshotProvider } from "./moonshot.js";
+export { GlmProvider } from "./glm.js";
 
 // Cache for the current provider instance
 let currentProvider: Provider | null = null;
@@ -21,8 +23,9 @@ let providerDetectionDone = false;
  * Detect which provider to use based on environment configuration
  * Detection order:
  * 1. ANTHROPIC_BASE_URL - if contains "moonshot", use Moonshot
- * 2. ANTHROPIC_AUTH_TOKEN format - if starts with "sk-ant-oat", use Anthropic
- * 3. Default to Anthropic
+ * 2. ANTHROPIC_BASE_URL - if contains "z.ai", use GLM
+ * 3. ANTHROPIC_AUTH_TOKEN format - if starts with "sk-ant-oat", use Anthropic
+ * 4. Non-Anthropic token → Moonshot; no indicators → default Anthropic
  */
 export async function detectProvider(): Promise<Provider | null> {
   // Check ANTHROPIC_BASE_URL for moonshot
@@ -30,6 +33,12 @@ export async function detectProvider(): Promise<Provider | null> {
   if (baseUrl.includes("moonshot")) {
     debug("Detected Moonshot provider from ANTHROPIC_BASE_URL");
     return new MoonshotProvider();
+  }
+
+  // Check ANTHROPIC_BASE_URL for GLM (z.ai Anthropic-compatible backend)
+  if (baseUrl.includes("z.ai")) {
+    debug("Detected GLM provider from ANTHROPIC_BASE_URL");
+    return new GlmProvider();
   }
 
   // Check token format

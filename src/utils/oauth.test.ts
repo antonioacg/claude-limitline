@@ -10,6 +10,7 @@ import {
 } from "./oauth.js";
 import { AnthropicProvider } from "../providers/anthropic.js";
 import { MoonshotProvider } from "../providers/moonshot.js";
+import { GlmProvider } from "../providers/glm.js";
 import { setProvider } from "../providers/index.js";
 
 // Mock fetch globally
@@ -269,6 +270,25 @@ describe("oauth utilities", () => {
 
       expect(provider).toBeInstanceOf(MoonshotProvider);
       expect(provider?.name).toBe("Moonshot");
+    });
+
+    it("detects GLM provider from ANTHROPIC_BASE_URL containing z.ai", async () => {
+      process.env.ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic";
+
+      const provider = await getCurrentProvider();
+
+      expect(provider).toBeInstanceOf(GlmProvider);
+      expect(provider?.name).toBe("GLM");
+    });
+
+    it("does not mis-detect GLM as Moonshot (z.ai base URL + non-sk-ant-oat token)", async () => {
+      process.env.ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic";
+      process.env.ANTHROPIC_AUTH_TOKEN = "b8305a3e98fb4cf88cbbd58a982a0690.fakekey";
+
+      const provider = await getCurrentProvider();
+
+      expect(provider).toBeInstanceOf(GlmProvider);
+      expect(provider).not.toBeInstanceOf(MoonshotProvider);
     });
 
     it("detects Anthropic provider from token format", async () => {
