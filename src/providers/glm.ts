@@ -151,12 +151,16 @@ export class GlmProvider implements Provider {
     }
 
     // Only TOKENS_LIMIT windows are model usage; TIME_LIMIT is a monthly tool
-    // quota (search / web-reader / zread) — skip it. Sort by reset time so the
-    // soonest-resetting window maps to "short" (~5h) and the next to "weekly"
-    // (~7d), matching the legacy field names oauth.ts expects.
-    const tokenLimits = data.data.limits
-      .filter(l => l.type === "TOKENS_LIMIT")
-      .sort((a, b) => a.nextResetTime - b.nextResetTime);
+    // quota (search / web-reader / zread) — skip it. Each TOKENS_LIMIT carries
+    // a stable `unit` identifying its window, so map by unit rather than
+    // inferring from nextResetTime: near a weekly boundary the weekly window's
+    // reset can slip *under* the ~5h window's (weekly resets every 7d, the
+    // block every 5h), which would transiently swap the two labels if we
+    // sorted by reset time. oauth.ts looks windows up by name, so order here
+    // only needs to be stable for human-readable output.
+    const tokenLimits = data.data.limits.filter(l => l.type === "TOKENS_LIMIT");
+    const shortLimit = tokenLimits.find(l => l.unit === 3);   // ~5h block
+    const weeklyLimit = tokenLimits.find(l => l.unit === 6);  // ~7d weekly
 
     const toWindow = (name: string, l: GlmLimit) => ({
       name,
@@ -166,8 +170,8 @@ export class GlmProvider implements Provider {
     });
 
     const windows: UsageResponse["windows"] = [];
-    if (tokenLimits[0]) windows.push(toWindow("short", tokenLimits[0]));
-    if (tokenLimits[1]) windows.push(toWindow("weekly", tokenLimits[1]));
+    if (shortLimit) windows.push(toWindow("short", shortLimit));
+    if (weeklyLimit) windows.push(toWindow("weekly", weeklyLimit));
 
     if (windows.length === 0) {
       debug("GLM quota response had no TOKENS_LIMIT windows");

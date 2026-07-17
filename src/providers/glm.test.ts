@@ -48,9 +48,11 @@ describe("GlmProvider", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("maps TOKENS_LIMIT windows to short/weekly by reset time and skips TIME_LIMIT", async () => {
-    // Deliberately unordered: weekly (unit 6) first, then a TIME_LIMIT, then the
-    // ~5h block (unit 3). Sort-by-reset must put unit 3 → "short", unit 6 → "weekly".
+  it("maps TOKENS_LIMIT windows to short/weekly by unit (not reset time) and skips TIME_LIMIT", async () => {
+    // Reset times are deliberately inverted: the weekly window (unit 6) resets
+    // BEFORE the ~5h window (unit 3) — the boundary condition that used to swap
+    // the two labels when we sorted by nextResetTime. Mapping by unit must still
+    // put unit 3 → "short", unit 6 → "weekly" regardless of reset order.
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
@@ -58,9 +60,9 @@ describe("GlmProvider", () => {
         code: 200,
         data: {
           limits: [
-            { type: "TOKENS_LIMIT", unit: 6, number: 1, percentage: 4, nextResetTime: 1784164165981 },
+            { type: "TOKENS_LIMIT", unit: 6, number: 1, percentage: 4, nextResetTime: 1783577596998 },
             { type: "TIME_LIMIT", unit: 5, number: 1, percentage: 0, nextResetTime: 1786237765994, usage: 1000, currentValue: 0, remaining: 1000 },
-            { type: "TOKENS_LIMIT", unit: 3, number: 5, percentage: 22, nextResetTime: 1783577596998 },
+            { type: "TOKENS_LIMIT", unit: 3, number: 5, percentage: 22, nextResetTime: 1784164165981 },
           ],
           level: "pro",
         },
@@ -71,9 +73,9 @@ describe("GlmProvider", () => {
     expect(usage).not.toBeNull();
     expect(usage?.windows).toHaveLength(2);
     expect(usage?.windows[0]).toMatchObject({ name: "short", percentUsed: 22 });
-    expect(usage?.windows[0].resetAt).toEqual(new Date(1783577596998));
+    expect(usage?.windows[0].resetAt).toEqual(new Date(1784164165981));
     expect(usage?.windows[1]).toMatchObject({ name: "weekly", percentUsed: 4 });
-    expect(usage?.windows[1].resetAt).toEqual(new Date(1784164165981));
+    expect(usage?.windows[1].resetAt).toEqual(new Date(1783577596998));
   });
 
   it("marks isOverLimit when percentage >= 100", async () => {
